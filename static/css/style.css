@@ -237,47 +237,53 @@ footer {
 }
 
 body.dark-mode {
-    background-color: #1a202c;
+    background-color: #121212;
     color: #e2e8f0;
 }
 
 body.dark-mode .chat-container {
-    background-color: #2d3748;
+    background-color: #1e1e1e;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 body.dark-mode .chat-messages {
-    background-color: #2d3748;
-    border-bottom-color: #4a5568;
+    background-color: #1e1e1e;
+    border-bottom-color: #333;
 }
 
 body.dark-mode .message.bot .message-content {
-    background-color: #4a5568;
+    background-color: #2d3748;
     color: #e2e8f0;
 }
 
 body.dark-mode #user-input {
-    background-color: #4a5568;
+    background-color: #2d3748;
     color: #e2e8f0;
-    border-color: #718096;
+    border-color: #4a5568;
 }
 
 body.dark-mode .chat-input-container {
-    background-color: #2d3748;
+    background-color: #1e1e1e;
 }
 
 body.dark-mode footer {
-    background-color: #2d3748;
+    background-color: #1e1e1e;
     color: #a0aec0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 body.dark-mode .clear-chat-button {
-    background-color: #4a5568;
+    background-color: #2d3748;
     color: #e2e8f0;
-    border-color: #718096;
+    border-color: #4a5568;
 }
 
 body.dark-mode .clear-chat-button:hover {
-    background-color: #718096;
+    background-color: #4a5568;
+}
+
+body.dark-mode .theme-toggle {
+    color: #e2e8f0;
 }
 
 /* التوافق مع الأجهزة المحمولة */

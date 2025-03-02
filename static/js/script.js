@@ -13,11 +13,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // تحديث السنة الحالية في التذييل
     document.getElementById('current-year').textContent = new Date().getFullYear();
     
-    // التحقق من وجود تفضيل للوضع المظلم في التخزين المحلي
-    if (localStorage.getItem('darkMode') === 'enabled') {
+    // تفعيل الوضع المظلم افتراضيًا إذا لم يكن هناك تفضيل محفوظ
+    if (localStorage.getItem('darkMode') === null || localStorage.getItem('darkMode') === 'enabled') {
         document.body.classList.add('dark-mode');
         themeIcon.classList.remove('fa-moon');
         themeIcon.classList.add('fa-sun');
+        localStorage.setItem('darkMode', 'enabled');
     }
     
     // إضافة مستمع الحدث لزر تبديل الوضع
