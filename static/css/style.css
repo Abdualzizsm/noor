@@ -116,19 +116,6 @@ main {
     border-bottom-left-radius: 5px;
 }
 
-.bot-icon {
-    width: 28px;
-    height: 28px;
-    margin-right: 8px;
-    background-color: #4a6cf7;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-size: 14px;
-}
-
 .message-content p {
     margin: 0;
     line-height: 1.6;

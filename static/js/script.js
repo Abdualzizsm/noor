@@ -73,7 +73,6 @@ document.addEventListener('DOMContentLoaded', function() {
             typingIndicator.className = 'message bot';
             typingIndicator.innerHTML = `
                 <div class="message-content">
-                    <div class="bot-icon">ن</div>
                     <div class="typing-indicator">
                         <span></span>
                         <span></span>
@@ -132,7 +131,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sender === 'bot') {
             messageContent = `
                 <div class="message-content">
-                    <div class="bot-icon">ن</div>
                     <p>${content}</p>
                 </div>
             `;
@@ -174,7 +172,6 @@ document.addEventListener('DOMContentLoaded', function() {
         notificationDiv.className = 'message bot';
         notificationDiv.innerHTML = `
             <div class="message-content">
-                <div class="bot-icon">ن</div>
                 <p>${message}</p>
             </div>
         `;
