@@ -149,5 +149,6 @@ def chat():
         return jsonify({'error': f'حدث خطأ: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    print(f"تم تشغيل {app.config['APP_NAME']} على الرابط: http://127.0.0.1:5010")
-    app.run(debug=True, port=5010)
+    port = int(os.environ.get('PORT', 5010))
+    print(f"تم تشغيل {app.config['APP_NAME']} على الرابط: http://127.0.0.1:{port}")
+    app.run(host='0.0.0.0', debug=False, port=port)
