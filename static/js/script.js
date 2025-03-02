@@ -23,127 +23,171 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // إضافة مستمع الحدث لزر تبديل الوضع
     themeToggle.addEventListener('click', function() {
-        document.body.classList.toggle('dark-mode');
-        
-        // تحديث الأيقونة
         if (document.body.classList.contains('dark-mode')) {
-            themeIcon.classList.remove('fa-moon');
-            themeIcon.classList.add('fa-sun');
-            localStorage.setItem('darkMode', 'enabled');
-        } else {
+            // تبديل إلى الوضع النهاري
+            document.body.classList.remove('dark-mode');
+            document.body.classList.add('light-mode');
             themeIcon.classList.remove('fa-sun');
             themeIcon.classList.add('fa-moon');
             localStorage.setItem('darkMode', 'disabled');
+        } else {
+            // تبديل إلى الوضع الليلي
+            document.body.classList.remove('light-mode');
+            document.body.classList.add('dark-mode');
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+            localStorage.setItem('darkMode', 'enabled');
         }
     });
     
     // إضافة مستمع الحدث لزر مسح المحادثة
     clearChatButton.addEventListener('click', function() {
-        // الاحتفاظ برسالة الترحيب فقط
-        const welcomeMessage = chatMessages.querySelector('.message.bot');
+        // الاحتفاظ فقط برسالة الترحيب
+        const welcomeMessage = chatMessages.firstElementChild;
         chatMessages.innerHTML = '';
         chatMessages.appendChild(welcomeMessage);
         
-        // التمرير إلى أعلى المحادثة
-        chatMessages.scrollTop = 0;
+        // إظهار رسالة تأكيد
+        showNotification('تم مسح المحادثة');
     });
     
     // إضافة مستمع الحدث لنموذج الدردشة
-    chatForm.addEventListener('submit', async function(e) {
+    chatForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        // الحصول على رسالة المستخدم
         const message = userInput.value.trim();
         
-        // التحقق من أن الرسالة ليست فارغة
-        if (!message) return;
-        
-        // إضافة رسالة المستخدم إلى الدردشة
-        addMessage(message, 'user');
-        
-        // مسح حقل الإدخال
-        userInput.value = '';
-        
-        // تعطيل زر الإرسال وإظهار مؤشر التحميل
-        sendButton.disabled = true;
-        loadingSpinner.style.display = 'block';
-        buttonText.textContent = 'جارٍ...';
-        
-        try {
+        if (message) {
+            // إضافة رسالة المستخدم
+            addMessage(message, 'user');
+            
+            // مسح حقل الإدخال
+            userInput.value = '';
+            
+            // تعطيل زر الإرسال وإظهار مؤشر التحميل
+            sendButton.disabled = true;
+            buttonText.style.display = 'none';
+            loadingSpinner.style.display = 'block';
+            
+            // إضافة مؤشر الكتابة
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'message bot';
+            typingIndicator.innerHTML = `
+                <div class="message-content">
+                    <div class="bot-icon">ن</div>
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(typingIndicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
             // إرسال الرسالة إلى الخادم
-            const response = await fetch('/api/chat', {
+            fetch('/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ message })
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('حدث خطأ في الاتصال بالخادم');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // إزالة مؤشر الكتابة
+                chatMessages.removeChild(typingIndicator);
+                
+                // إضافة رد البوت
+                addMessage(data.response, 'bot');
+            })
+            .catch(error => {
+                // إزالة مؤشر الكتابة
+                if (typingIndicator.parentNode) {
+                    chatMessages.removeChild(typingIndicator);
+                }
+                
+                // إظهار رسالة الخطأ
+                showError(error.message);
+            })
+            .finally(() => {
+                // إعادة تفعيل زر الإرسال وإخفاء مؤشر التحميل
+                sendButton.disabled = false;
+                buttonText.style.display = 'block';
+                loadingSpinner.style.display = 'none';
             });
-            
-            const data = await response.json();
-            
-            // التحقق من وجود خطأ
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
-            // إضافة رد البوت إلى الدردشة
-            addMessage(data.response, 'bot');
-            
-        } catch (error) {
-            console.error('Error:', error);
-            
-            // إضافة رسالة خطأ إلى الدردشة
-            const errorMessage = document.createElement('div');
-            errorMessage.className = 'error-message';
-            errorMessage.textContent = `حدث خطأ: ${error.message}`;
-            chatMessages.appendChild(errorMessage);
-        } finally {
-            // إعادة تمكين زر الإرسال وإخفاء مؤشر التحميل
-            sendButton.disabled = false;
-            loadingSpinner.style.display = 'none';
-            buttonText.textContent = 'إرسال';
-            
-            // التمرير إلى أسفل الدردشة
-            scrollToBottom();
         }
     });
     
-    // وظيفة لإضافة رسالة إلى الدردشة
+    // دالة لإضافة رسالة إلى المحادثة
     function addMessage(content, sender) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
         
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        
-        // إضافة أيقونة للروبوت إذا كانت الرسالة من البوت
+        let messageContent = '';
         if (sender === 'bot') {
-            const botIcon = document.createElement('div');
-            botIcon.className = 'bot-icon';
-            botIcon.textContent = 'ن';
-            messageContent.appendChild(botIcon);
+            messageContent = `
+                <div class="message-content">
+                    <div class="bot-icon">ن</div>
+                    <p>${content}</p>
+                </div>
+            `;
+        } else {
+            messageContent = `
+                <div class="message-content">
+                    <p>${content}</p>
+                </div>
+            `;
         }
         
-        // تقسيم المحتوى إلى فقرات
-        const paragraphs = content.split('\n');
-        paragraphs.forEach(paragraph => {
-            if (paragraph.trim() !== '') {
-                const p = document.createElement('p');
-                p.textContent = paragraph;
-                messageContent.appendChild(p);
-            }
-        });
-        
-        messageDiv.appendChild(messageContent);
+        messageDiv.innerHTML = messageContent;
         chatMessages.appendChild(messageDiv);
         
-        // التمرير إلى أسفل الدردشة
-        scrollToBottom();
+        // التمرير إلى أسفل المحادثة
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
-    // وظيفة للتمرير إلى أسفل الدردشة
-    function scrollToBottom() {
+    // دالة لإظهار رسالة خطأ
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = message;
+        
+        chatMessages.appendChild(errorDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // إزالة رسالة الخطأ بعد 5 ثوانٍ
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                chatMessages.removeChild(errorDiv);
+            }
+        }, 5000);
+    }
+    
+    // دالة لإظهار إشعار
+    function showNotification(message) {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = 'message bot';
+        notificationDiv.innerHTML = `
+            <div class="message-content">
+                <div class="bot-icon">ن</div>
+                <p>${message}</p>
+            </div>
+        `;
+        
+        chatMessages.appendChild(notificationDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // إزالة الإشعار بعد 3 ثوانٍ
+        setTimeout(() => {
+            if (notificationDiv.parentNode) {
+                chatMessages.removeChild(notificationDiv);
+            }
+        }, 3000);
     }
     
     // التركيز على حقل الإدخال عند تحميل الصفحة
