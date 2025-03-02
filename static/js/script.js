@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chatMessages.scrollTop = chatMessages.scrollHeight;
             
             // إرسال الرسالة إلى الخادم
-            fetch('/chat', {
+            fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
