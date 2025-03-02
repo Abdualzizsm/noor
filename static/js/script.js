@@ -6,9 +6,46 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendButton = document.getElementById('send-button');
     const loadingSpinner = document.getElementById('loading-spinner');
     const buttonText = document.querySelector('.button-text');
+    const clearChatButton = document.getElementById('clear-chat');
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = themeToggle.querySelector('i');
     
     // تحديث السنة الحالية في التذييل
     document.getElementById('current-year').textContent = new Date().getFullYear();
+    
+    // التحقق من وجود تفضيل للوضع المظلم في التخزين المحلي
+    if (localStorage.getItem('darkMode') === 'enabled') {
+        document.body.classList.add('dark-mode');
+        themeIcon.classList.remove('fa-moon');
+        themeIcon.classList.add('fa-sun');
+    }
+    
+    // إضافة مستمع الحدث لزر تبديل الوضع
+    themeToggle.addEventListener('click', function() {
+        document.body.classList.toggle('dark-mode');
+        
+        // تحديث الأيقونة
+        if (document.body.classList.contains('dark-mode')) {
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+            localStorage.setItem('darkMode', 'enabled');
+        } else {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+            localStorage.setItem('darkMode', 'disabled');
+        }
+    });
+    
+    // إضافة مستمع الحدث لزر مسح المحادثة
+    clearChatButton.addEventListener('click', function() {
+        // الاحتفاظ برسالة الترحيب فقط
+        const welcomeMessage = chatMessages.querySelector('.message.bot');
+        chatMessages.innerHTML = '';
+        chatMessages.appendChild(welcomeMessage);
+        
+        // التمرير إلى أعلى المحادثة
+        chatMessages.scrollTop = 0;
+    });
     
     // إضافة مستمع الحدث لنموذج الدردشة
     chatForm.addEventListener('submit', async function(e) {
@@ -78,13 +115,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
-        // تقسيم المحتوى إلى فقرات
-        const paragraphs = content.split('\n').filter(p => p.trim() !== '');
+        // إضافة أيقونة للروبوت إذا كانت الرسالة من البوت
+        if (sender === 'bot') {
+            const botIcon = document.createElement('div');
+            botIcon.className = 'bot-icon';
+            botIcon.textContent = 'ن';
+            messageContent.appendChild(botIcon);
+        }
         
+        // تقسيم المحتوى إلى فقرات
+        const paragraphs = content.split('\n');
         paragraphs.forEach(paragraph => {
-            const p = document.createElement('p');
-            p.textContent = paragraph;
-            messageContent.appendChild(p);
+            if (paragraph.trim() !== '') {
+                const p = document.createElement('p');
+                p.textContent = paragraph;
+                messageContent.appendChild(p);
+            }
         });
         
         messageDiv.appendChild(messageContent);

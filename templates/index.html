@@ -6,11 +6,16 @@
     <title>نور (Noor)</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div class="container">
+        <button class="theme-toggle" id="theme-toggle" title="تبديل الوضع الليلي/النهاري">
+            <i class="fas fa-moon"></i>
+        </button>
+        
         <header>
-            <h1>نور (Noor)</h1>
+            <h1>✨ نور (Noor) ✨</h1>
         </header>
         
         <main>
@@ -18,17 +23,20 @@
                 <div class="chat-messages" id="chat-messages">
                     <div class="message bot">
                         <div class="message-content">
+                            <div class="bot-icon">ن</div>
                             <p>مرحباً! أنا نموذج ذكاء اصطناعي تم تطويره بواسطة فريق ستيف وفريقه السعودي. أنا هنا لمساعدتك في الإجابة على أسئلتك وتقديم المعلومات التي تحتاجها. كيف يمكنني مساعدتك اليوم؟</p>
                         </div>
                     </div>
                 </div>
                 
+                <button class="clear-chat-button" id="clear-chat">مسح المحادثة</button>
+                
                 <div class="chat-input-container">
                     <form id="chat-form">
                         <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." autocomplete="off">
                         <button type="submit" id="send-button">
-                            <span class="button-text">إرسال</span>
                             <span class="loading-spinner" id="loading-spinner"></span>
+                            <span class="button-text">إرسال</span>
                         </button>
                     </form>
                 </div>
@@ -36,10 +44,10 @@
         </main>
         
         <footer>
-            <p>تم التطوير بواسطة <a href="#" target="_blank">فريق التطوير</a> &copy; <span id="current-year"></span></p>
+            <p>تم التطوير بواسطة فريق ستيف وفريقه السعودي <span id="current-year">2025</span></p>
         </footer>
     </div>
-
+    
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
