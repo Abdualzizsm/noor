@@ -15,6 +15,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let isWebSearchEnabled = false;
     let isThemeDark = true; // افتراضي: الوضع الداكن
+    let typingSpeed = 15; // سرعة الكتابة (مللي ثانية لكل حرف)
+    
+    // إضافة مؤشر البحث المباشر إلى الصفحة
+    const liveSearchIndicator = document.createElement('div');
+    liveSearchIndicator.className = 'live-search-indicator';
+    liveSearchIndicator.innerHTML = 'جاري البحث على الإنترنت <i class="fas fa-circle-notch"></i>';
+    document.body.appendChild(liveSearchIndicator);
     
     // تحديث السنة الحالية في التذييل
     const currentYearElements = document.querySelectorAll('#current-year');
@@ -150,6 +157,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // إضافة مؤشر التحميل
         const loadingIndicator = addLoadingIndicator();
         
+        // إظهار مؤشر البحث المباشر إذا كان البحث مفعلاً
+        if (isWebSearchEnabled) {
+            liveSearchIndicator.classList.add('active');
+        }
+        
         // إرسال الرسالة إلى الخادم
         fetch('/chat', {
             method: 'POST',
@@ -168,13 +180,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 chatContainer.removeChild(loadingIndicator);
             }
             
+            // إخفاء مؤشر البحث المباشر
+            liveSearchIndicator.classList.remove('active');
+            
             // إذا كانت هناك معلومات خام من البحث، أضفها أولاً
             if (data.raw_info && data.raw_info.trim() !== '') {
                 addRawInfoToChat(data.raw_info);
             }
             
-            // إضافة رد نور
-            addMessageToChat('bot', data.response);
+            // إضافة رد نور مع تأثير الكتابة
+            addMessageToChatWithTypingEffect('bot', data.response);
             
             // تمرير إلى أسفل المحادثة
             chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -186,6 +201,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (loadingIndicator) {
                 chatContainer.removeChild(loadingIndicator);
             }
+            
+            // إخفاء مؤشر البحث المباشر
+            liveSearchIndicator.classList.remove('active');
             
             // إضافة رسالة خطأ
             const errorMessage = 'عذراً، حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.';
@@ -212,6 +230,99 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // تمرير إلى أسفل المحادثة
         chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // وظيفة إضافة رسالة مع تأثير الكتابة
+    function addMessageToChatWithTypingEffect(sender, content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        // إضافة عنصر الكتابة المؤقت
+        const typingAnimation = document.createElement('div');
+        typingAnimation.className = 'typing-animation';
+        typingAnimation.innerHTML = 'جاري الكتابة<span>.</span><span>.</span><span>.</span>';
+        messageContent.appendChild(typingAnimation);
+        
+        messageDiv.appendChild(messageContent);
+        chatContainer.appendChild(messageDiv);
+        
+        // تمرير إلى أسفل المحادثة
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        // تقسيم المحتوى إلى فقرات
+        const paragraphs = content.split('\n\n');
+        let currentParagraphIndex = 0;
+        
+        // بدء تأثير الكتابة بعد فترة قصيرة
+        setTimeout(() => {
+            // إزالة عنصر الكتابة المؤقت
+            messageContent.removeChild(typingAnimation);
+            
+            // إضافة الفقرة الأولى مع تأثير الكتابة
+            addNextParagraph();
+            
+            function addNextParagraph() {
+                if (currentParagraphIndex < paragraphs.length) {
+                    const paragraph = paragraphs[currentParagraphIndex];
+                    if (paragraph.trim() !== '') {
+                        const p = document.createElement('p');
+                        p.className = 'typing-paragraph';
+                        messageContent.appendChild(p);
+                        
+                        // تنسيق الفقرة (تحويل الروابط وتنسيق النص)
+                        const formattedParagraph = formatMessage(paragraph);
+                        
+                        // إضافة الحروف واحدًا تلو الآخر
+                        typeText(p, formattedParagraph, 0, () => {
+                            currentParagraphIndex++;
+                            addNextParagraph();
+                        });
+                    } else {
+                        currentParagraphIndex++;
+                        addNextParagraph();
+                    }
+                }
+                
+                // تمرير إلى أسفل المحادثة
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }, 500);
+    }
+    
+    // وظيفة كتابة النص حرفًا بحرف
+    function typeText(element, html, index, callback) {
+        // استخراج النص من HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const text = tempDiv.textContent;
+        
+        // إذا كان النص فارغًا، قم بإضافة HTML مباشرة
+        if (!text || text.trim() === '') {
+            element.innerHTML = html;
+            if (callback) callback();
+            return;
+        }
+        
+        // إذا كان HTML يحتوي على وسوم، قم بإضافته مباشرة
+        if (html !== text) {
+            element.innerHTML = html;
+            if (callback) callback();
+            return;
+        }
+        
+        if (index < text.length) {
+            element.textContent += text.charAt(index);
+            setTimeout(() => {
+                typeText(element, html, index + 1, callback);
+            }, typingSpeed);
+        } else {
+            // بعد الانتهاء من الكتابة، استبدل النص بـ HTML المنسق
+            element.innerHTML = html;
+            if (callback) callback();
+        }
     }
     
     // وظيفة إضافة المعلومات الخام إلى المحادثة
