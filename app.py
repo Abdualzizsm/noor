@@ -5,6 +5,9 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import google.generativeai as genai
 import argparse
+from datetime import datetime
+import pytz
+from hijri_converter import Gregorian, Hijri
 
 # تحميل المتغيرات البيئية من ملف .env
 load_dotenv()
@@ -84,6 +87,10 @@ def process_message(user_message, conversation_history):
     # التحقق إذا كان السؤال عن هوية الروبوت
     if any(phrase in user_message.lower() for phrase in ['من أنت', 'من انت', 'عرف نفسك', 'عرفنا عليك', 'من هو', 'من هي']):
         return "أنا ذكاء نور الخارق، كيف يمكنني مساعدتك اليوم؟"
+    
+    # التحقق من طلبات التاريخ والوقت
+    if any(keyword in user_message.lower() for keyword in ['تاريخ', 'اليوم', 'التاريخ', 'الوقت', 'الساعة']):
+        return handle_date_time_query(user_message, conversation_history)
     
     # التحقق من وجود مفتاح GitHub
     if not github_token:
@@ -379,6 +386,83 @@ def analyze_and_respond(user_question, raw_info, conversation_history):
     except Exception as e:
         print(f"خطأ في تحليل المعلومات: {str(e)}")
         return f"حدث خطأ أثناء تحليل المعلومات: {str(e)}"
+
+def handle_date_time_query(user_message, conversation_history):
+    """معالجة استفسارات التاريخ والوقت مع دعم التاريخ الهجري"""
+    try:
+        from datetime import datetime
+        import pytz
+        from hijri_converter import Gregorian, Hijri
+        
+        # الحصول على التاريخ والوقت الحاليين
+        timezone = pytz.timezone('Asia/Riyadh')  # استخدام توقيت السعودية كمثال
+        now = datetime.now(timezone)
+        
+        # تحديد الأشهر العربية
+        arabic_months = {
+            1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل", 5: "مايو", 6: "يونيو",
+            7: "يوليو", 8: "أغسطس", 9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر"
+        }
+        
+        arabic_weekdays = {
+            0: "الاثنين", 1: "الثلاثاء", 2: "الأربعاء", 
+            3: "الخميس", 4: "الجمعة", 5: "السبت", 6: "الأحد"
+        }
+        
+        # تنسيق التاريخ بالعربية
+        formatted_date = f"{now.day} {arabic_months[now.month]} {now.year}"
+        weekday = arabic_weekdays[now.weekday()]
+        
+        # تنسيق الوقت
+        formatted_time = now.strftime("%I:%M %p").replace("AM", "صباحاً").replace("PM", "مساءً")
+        
+        # تحويل التاريخ الميلادي إلى هجري
+        hijri_date = Gregorian(now.year, now.month, now.day).to_hijri()
+        
+        # أسماء الأشهر الهجرية
+        hijri_months = {
+            1: "محرم", 2: "صفر", 3: "ربيع الأول", 4: "ربيع الثاني", 
+            5: "جمادى الأولى", 6: "جمادى الآخرة", 7: "رجب", 8: "شعبان",
+            9: "رمضان", 10: "شوال", 11: "ذو القعدة", 12: "ذو الحجة"
+        }
+        
+        # تنسيق التاريخ الهجري
+        formatted_hijri_date = f"{hijri_date.day} {hijri_months[hijri_date.month]} {hijri_date.year}"
+        
+        # التحقق من طلب التاريخ الهجري
+        is_hijri_request = False
+        
+        # فحص الرسالة الحالية
+        if any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
+            is_hijri_request = True
+        
+        # فحص سياق المحادثة السابقة إذا كانت الرسالة الحالية قصيرة
+        if len(user_message.split()) <= 2 and not is_hijri_request:
+            # البحث في آخر رسالتين من المحادثة
+            for i in range(min(4, len(conversation_history))):
+                if i > 0 and conversation_history[-i]["role"] == "user":
+                    prev_msg = conversation_history[-i]["content"].lower()
+                    if any(keyword in prev_msg for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
+                        if any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
+                            is_hijri_request = True
+                            break
+        
+        # إعداد الاستجابة بناءً على نوع السؤال
+        if is_hijri_request:
+            return f"التاريخ الهجري اليوم هو {formatted_hijri_date}."
+        elif any(keyword in user_message for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
+            if any(keyword in user_message for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
+                return f"التاريخ الهجري اليوم هو {formatted_hijri_date}."
+            else:
+                return f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}."
+        elif any(keyword in user_message for keyword in ['الوقت', 'الساعة']):
+            return f"الوقت الآن هو {formatted_time}."
+        else:
+            return f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}، والوقت الآن هو {formatted_time}."
+    
+    except Exception as e:
+        print(f"خطأ في معالجة استفسار التاريخ والوقت: {str(e)}")
+        return "عذراً، حدث خطأ أثناء معالجة استفسار التاريخ والوقت."
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='تشغيل تطبيق نور')
