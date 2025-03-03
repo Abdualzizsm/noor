@@ -10,6 +10,7 @@
     --dark-shadow: rgba(0, 0, 0, 0.3);
     --gradient-blue: linear-gradient(135deg, #3a86ff, #0066ff);
     --gradient-purple: linear-gradient(135deg, #8b5cf6, #6366f1);
+    --gradient-logo: linear-gradient(135deg, #8b5cf6, #3a86ff);
     --border-radius-lg: 16px;
     --border-radius-md: 12px;
     --border-radius-sm: 8px;
@@ -47,10 +48,46 @@ header {
     padding-top: 10px;
 }
 
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.logo-icon {
+    width: 50px;
+    height: 50px;
+    background: var(--gradient-logo);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 5px 15px rgba(139, 92, 246, 0.3);
+    animation: pulse 2s infinite;
+}
+
+.logo-icon i {
+    font-size: 24px;
+    color: white;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+    }
+}
+
 header h1 {
     margin: 0;
-    font-size: 2.8rem;
-    background: var(--gradient-purple);
+    font-size: 3rem;
+    background: var(--gradient-logo);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -137,8 +174,8 @@ main {
 }
 
 .bot-icon {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     margin-right: 12px;
     background: var(--gradient-purple);
     border-radius: 50%;
@@ -148,6 +185,10 @@ main {
     color: white;
     font-size: 16px;
     box-shadow: 0 2px 5px rgba(99, 102, 241, 0.3);
+}
+
+.bot-icon i {
+    font-size: 16px;
 }
 
 .message-content p {
@@ -319,7 +360,16 @@ footer {
     }
     
     header h1 {
-        font-size: 2.2rem;
+        font-size: 2.5rem;
+    }
+    
+    .logo-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .logo-icon i {
+        font-size: 20px;
     }
     
     .message-content {
@@ -328,8 +378,8 @@ footer {
     }
     
     .bot-icon {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         margin-right: 10px;
     }
     
@@ -353,7 +403,16 @@ footer {
     }
     
     header h1 {
-        font-size: 2rem;
+        font-size: 2.2rem;
+    }
+    
+    .logo-icon {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .logo-icon i {
+        font-size: 18px;
     }
     
     .chat-messages {
@@ -363,6 +422,16 @@ footer {
     .message-content {
         max-width: 95%;
         padding: 10px 14px;
+    }
+    
+    .bot-icon {
+        width: 28px;
+        height: 28px;
+        margin-right: 8px;
+    }
+    
+    .bot-icon i {
+        font-size: 14px;
     }
     
     #user-input {

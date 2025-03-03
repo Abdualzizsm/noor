@@ -116,7 +116,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sender === 'bot') {
             const botIcon = document.createElement('div');
             botIcon.className = 'bot-icon';
-            botIcon.textContent = 'ن';
+            // إزالة حرف النون واستبداله بأيقونة
+            botIcon.innerHTML = '<i class="fas fa-robot"></i>';
             messageContent.appendChild(botIcon);
         }
         
