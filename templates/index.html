@@ -2,102 +2,58 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-touch-fullscreen" content="yes">
     <title>نور (Noor)</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 </head>
 <body>
-    <div class="app-container">
-        <!-- الشريط الجانبي -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <i class="fa-solid fa-lightbulb"></i>
-                    <span>نور</span>
-                </div>
-            </div>
-            <!-- زر محادثة جديدة -->
-            <button class="new-chat-button" id="clear-chat">
-                <i class="fa-solid fa-plus"></i>
-                <span>محادثة جديدة</span>
-            </button>
-            
-            <!-- جلسات المحادثة السابقة (وهمية للتصميم) -->
-            <div class="chat-history">
-                <div class="history-header">المحادثات</div>
-                <div class="history-item active">
-                    <i class="fa-regular fa-message"></i>
-                    <span>المحادثة الحالية</span>
-                </div>
-            </div>
-            
-            <!-- معلومات المستخدم -->
-            <div class="user-info">
-                <div class="user-avatar">
-                    <i class="fa-solid fa-user"></i>
-                </div>
-                <div class="user-details">
-                    <span class="username">مستخدم نور</span>
-                </div>
-                <button class="theme-toggle" id="theme-toggle" title="تبديل الوضع الليلي/النهاري">
-                    <i class="fas fa-sun"></i>
-                </button>
-            </div>
-        </aside>
+    <div class="container">
+        <button class="theme-toggle" id="theme-toggle" title="تبديل الوضع الليلي/النهاري">
+            <i class="fas fa-sun"></i>
+        </button>
         
-        <!-- منطقة المحتوى الرئيسية -->
-        <main class="main-content">
-            <header class="chat-header">
-                <h1>نور - مساعد الذكاء الاصطناعي</h1>
-                <div class="header-actions">
-                    <button class="mobile-menu-toggle" id="mobile-menu-toggle">
-                        <i class="fa-solid fa-bars"></i>
-                    </button>
+        <header>
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fas fa-lightbulb"></i>
                 </div>
-            </header>
-            
-            <!-- منطقة المحادثة -->
-            <div class="chat-area">
-                <div class="messages-container" id="chat-messages">
-                    <!-- رسالة الترحيب -->
+                <h1>نور</h1>
+            </div>
+        </header>
+        
+        <main>
+            <div class="chat-container">
+                <div class="chat-messages" id="chat-messages">
                     <div class="message bot">
                         <div class="message-content">
-                            <div class="message-avatar">
-                                <i class="fas fa-robot"></i>
-                            </div>
-                            <div class="message-bubble">
-                                <div class="message-text">
-                                    <p>مرحباً بك في نور! أنا مساعدك الذكي الذي يساعدك في الإجابة على أسئلتك وتقديم المعلومات التي تحتاجها. ماذا تريد أن تسأل عنه اليوم؟</p>
-                                </div>
-                            </div>
+                            <p>مرحباً! أنا نموذج ذكاء اصطناعي تم تطويره بواسطة فريق ستيف وفريقه السعودي. أنا هنا لمساعدتك في الإجابة على أسئلتك وتقديم المعلومات التي تحتاجها. كيف يمكنني مساعدتك اليوم؟</p>
                         </div>
                     </div>
                 </div>
                 
-                <!-- منطقة إدخال الرسائل -->
-                <div class="input-area">
-                    <form id="chat-form" class="message-input">
+                <button class="clear-chat-button" id="clear-chat">مسح المحادثة</button>
+                
+                <div class="chat-input-container">
+                    <form id="chat-form">
                         <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." autocomplete="off" autofocus>
-                        <button type="submit" id="send-button" class="send-button">
-                            <i class="fa-solid fa-paper-plane"></i>
+                        <button type="submit" id="send-button">
                             <div class="loading-spinner" id="loading-spinner"></div>
+                            <span class="button-text">إرسال</span>
                         </button>
                     </form>
-                    <div class="input-footer">
-                        <p>تم التطوير بواسطة فريق ستيف وفريقه السعودي &copy; <span id="current-year">2023</span></p>
-                    </div>
                 </div>
             </div>
         </main>
+        
+        <footer>
+            <p>تم التطوير بواسطة فريق ستيف وفريقه السعودي &copy; <span id="current-year">2023</span></p>
+        </footer>
     </div>
     
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
