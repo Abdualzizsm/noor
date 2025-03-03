@@ -18,6 +18,12 @@
 </head>
 <body>
     <div class="container">
+        <div class="top-buttons">
+            <button class="theme-toggle" id="theme-toggle" title="تبديل الوضع الليلي/النهاري">
+                <i class="fas fa-sun"></i>
+            </button>
+        </div>
+        
         <header>
             <h1 class="title">نور</h1>
             <div class="subtitle">الذكاء السعودي</div>
@@ -35,24 +41,24 @@
                 
                 <div class="chat-input-container">
                     <form id="chat-form" class="input-wrapper">
-                        <div class="input-row">
-                            <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." dir="rtl">
-                            <button type="submit" id="send-button" class="action-button primary-button">
-                                <i class="fas fa-paper-plane"></i>
+                        <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." dir="rtl">
+                        
+                        <!-- زر تبديل البحث على الإنترنت (فوق زر الإرسال) -->
+                        <div class="input-toggle-container">
+                            <button type="button" id="web-search-toggle" class="input-toggle">
+                                <i class="fas fa-globe"></i>
                             </button>
+                            <span id="web-search-label" class="input-toggle-label">البحث على الإنترنت مع التفكير الذكي: معطل</span>
                         </div>
                         
-                        <div class="controls-row">
-                            <div class="web-search-compact">
-                                <button type="button" id="web-search-toggle" class="input-toggle">
-                                    <i class="fas fa-globe"></i>
-                                </button>
-                                <span id="web-search-label" class="input-toggle-label">البحث على الإنترنت: معطل</span>
-                            </div>
-                            
+                        <div class="input-buttons">
+                            <button type="submit" id="send-button" class="action-button primary-button">
+                                <span class="button-text">إرسال</span>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
                             <button type="button" id="clear-button" class="action-button secondary-button">
-                                <i class="fas fa-trash"></i>
                                 <span class="button-text">مسح</span>
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </form>
