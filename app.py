@@ -4,6 +4,7 @@ import json
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import google.generativeai as genai
+import argparse
 
 # تحميل المتغيرات البيئية من ملف .env
 load_dotenv()
@@ -20,13 +21,20 @@ if not github_token:
 gemini_api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBiQN8UfRfH8M-IWGd-Nt_xSPZkTwqMWvs")
 genai.configure(api_key=gemini_api_key)
 
+# متغير عالمي لتخزين سجل المحادثة
+conversation_history = []
+
 @app.route('/')
 def index():
+    # إعادة تعيين سجل المحادثة عند بدء جلسة جديدة
+    global conversation_history
+    conversation_history = []
     return render_template('index.html')
 
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
+        global conversation_history
         data = request.json
         user_message = data.get('message', '')
         use_web_search = data.get('web_search', False)
@@ -34,27 +42,45 @@ def chat():
         if not user_message:
             return jsonify({'error': 'الرسالة فارغة'}), 400
         
+        # إضافة رسالة المستخدم إلى سجل المحادثة
+        conversation_history.append({"role": "user", "content": user_message})
+        
         # استجابة مؤقتة للاختبار
         if use_web_search:
             # الحصول على معلومات من الإنترنت أولاً
             raw_info = use_gemini_with_web_search(user_message)
             
-            # ثم تحليل المعلومات وإعادة صياغتها بشكل ذكي
-            final_response = analyze_and_respond(user_message, raw_info)
+            # ثم تحليل المعلومات وإعادة صياغتها بشكل ذكي مع مراعاة سياق المحادثة
+            final_response = analyze_and_respond(user_message, raw_info, conversation_history)
+            
+            # إضافة رد النموذج إلى سجل المحادثة
+            conversation_history.append({"role": "assistant", "content": final_response})
+            
+            # الحفاظ على سجل محادثة محدود (آخر 10 رسائل فقط)
+            if len(conversation_history) > 20:
+                conversation_history = conversation_history[-20:]
             
             return jsonify({
                 'raw_info': raw_info,
                 'response': final_response
             })
         else:
-            response = process_message(user_message)
+            response = process_message(user_message, conversation_history)
+            
+            # إضافة رد النموذج إلى سجل المحادثة
+            conversation_history.append({"role": "assistant", "content": response})
+            
+            # الحفاظ على سجل محادثة محدود (آخر 10 رسائل فقط)
+            if len(conversation_history) > 20:
+                conversation_history = conversation_history[-20:]
+                
             return jsonify({'response': response})
     
     except Exception as e:
         app.logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({'error': 'حدث خطأ في معالجة طلبك'}), 500
 
-def process_message(user_message):
+def process_message(user_message, conversation_history):
     # التحقق إذا كان السؤال عن هوية الروبوت
     if any(phrase in user_message.lower() for phrase in ['من أنت', 'من انت', 'عرف نفسك', 'عرفنا عليك', 'من هو', 'من هي']):
         return "أنا ذكاء نور الخارق، كيف يمكنني مساعدتك اليوم؟"
@@ -74,19 +100,25 @@ def process_message(user_message):
             "Content-Type": "application/json"
         }
         
+        # إعداد رسائل المحادثة مع سياق المحادثة
+        messages = [
+            {
+                "role": "system",
+                "content": "أنت ذكاء نور الخارق. ساعد المستخدم بإجابات مختصرة ومفيدة. لا تذكر أبدًا أنك من OpenAI أو أي شركة أخرى. تذكر المحادثة السابقة وحافظ على سياق المحادثة."
+            }
+        ]
+        
+        # إضافة آخر 10 رسائل من سجل المحادثة (أو أقل إذا كان السجل أقصر)
+        for message in conversation_history[-10:]:
+            messages.append({
+                "role": message["role"],
+                "content": message["content"]
+            })
+        
         # إعداد بيانات الطلب
         payload = {
             "model": "gpt-3.5-turbo",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "أنت ذكاء نور الخارق. ساعد المستخدم بإجابات مختصرة ومفيدة. لا تذكر أبدًا أنك من OpenAI أو أي شركة أخرى."
-                },
-                {
-                    "role": "user",
-                    "content": user_message
-                }
-            ],
+            "messages": messages,
             "temperature": 0.7,
             "max_tokens": 1000
         }
@@ -125,19 +157,25 @@ def process_message(user_message):
             "Accept": "application/json"
         }
         
+        # إعداد رسائل المحادثة مع سياق المحادثة
+        messages = [
+            {
+                "role": "system",
+                "content": "أنت ذكاء نور الخارق. ساعد المستخدم بإجابات مختصرة ومفيدة. لا تذكر أبدًا أنك من OpenAI أو أي شركة أخرى. تذكر المحادثة السابقة وحافظ على سياق المحادثة."
+            }
+        ]
+        
+        # إضافة آخر 10 رسائل من سجل المحادثة (أو أقل إذا كان السجل أقصر)
+        for message in conversation_history[-10:]:
+            messages.append({
+                "role": message["role"],
+                "content": message["content"]
+            })
+        
         # إعداد بيانات الطلب
         payload = {
             "model": "gpt-4o-mini",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": ""
-                },
-                {
-                    "role": "user",
-                    "content": user_message
-                }
-            ],
+            "messages": messages,
             "temperature": 1,
             "max_tokens": 2048,
             "top_p": 1
@@ -281,7 +319,7 @@ def use_gemini_with_web_search(user_message):
         print(f"خطأ في استخدام Gemini مع البحث على الإنترنت: {str(e)}")
         return f"حدث خطأ أثناء البحث: {str(e)}"
 
-def analyze_and_respond(user_question, raw_info):
+def analyze_and_respond(user_question, raw_info, conversation_history):
     """تحليل المعلومات الخام وإعادة صياغتها بشكل ذكي"""
     try:
         # إنشاء نموذج Gemini لتحليل المعلومات
@@ -299,22 +337,33 @@ def analyze_and_respond(user_question, raw_info):
         
         # تحسين الطلب لتحليل المعلومات
         prompt = f"""
+        قم بتحليل المعلومات التالية وإعادة صياغتها بشكل ذكي لتقديم إجابة على سؤال المستخدم.
+        
         سؤال المستخدم: {user_question}
         
         المعلومات الخام:
         {raw_info}
         
         المطلوب:
-        1. قم بتحليل المعلومات الخام بعناية.
-        2. أعد صياغة المعلومات بأسلوب واضح وسلس.
-        3. قدم إجابة مباشرة ومفصلة لسؤال المستخدم.
-        4. استخدم لغة عربية فصيحة وسهلة الفهم.
-        5. نظم الإجابة بشكل منطقي ومتسلسل.
-        6. تجنب التكرار والحشو.
-        7. أضف استنتاجات أو توصيات إذا كان ذلك مناسباً.
+        1. قم بتحليل المعلومات وتلخيصها بشكل ذكي.
+        2. قدم إجابة مباشرة ومفيدة على سؤال المستخدم.
+        3. استخدم لغة واضحة وسهلة الفهم.
+        4. نظم المعلومات بشكل منطقي.
+        5. تجنب تكرار المعلومات.
+        6. تأكد من أن الإجابة شاملة وتغطي جميع جوانب السؤال.
+        7. حافظ على سياق المحادثة واربط إجابتك بالمحادثة السابقة إذا كان ذلك مناسبًا.
         
         ملاحظة: قدم إجابة شاملة ولكن مختصرة، مع التركيز على النقاط الأكثر أهمية.
+        
+        سياق المحادثة السابقة:
         """
+        
+        # إضافة آخر 5 رسائل من سجل المحادثة إلى الطلب (إذا وجدت)
+        if len(conversation_history) > 1:  # تجاهل الرسالة الحالية
+            prompt += "\nفيما يلي سجل المحادثة السابقة (أحدث 5 رسائل):\n"
+            for i, message in enumerate(conversation_history[-6:-1]):  # آخر 5 رسائل باستثناء الرسالة الحالية
+                role = "المستخدم" if message["role"] == "user" else "نور"
+                prompt += f"{i+1}. {role}: {message['content']}\n"
         
         response = model.generate_content(prompt)
         
@@ -332,6 +381,9 @@ def analyze_and_respond(user_question, raw_info):
         return f"حدث خطأ أثناء تحليل المعلومات: {str(e)}"
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5010))
-    print(f"تم تشغيل {app.config['APP_NAME']} على الرابط: http://127.0.0.1:{port}")
-    app.run(host='0.0.0.0', debug=False, port=port)
+    parser = argparse.ArgumentParser(description='تشغيل تطبيق نور')
+    parser.add_argument('--port', type=int, default=5010, help='رقم المنفذ للتشغيل')
+    args = parser.parse_args()
+    
+    print(f"تم تشغيل نور (Noor) على الرابط: http://127.0.0.1:{args.port}")
+    app.run(host='0.0.0.0', port=args.port)
