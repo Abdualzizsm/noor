@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const chatContainer = document.getElementById('chat-container');
+    const chatContainer = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
     const clearButton = document.getElementById('clear-button');
+    const clearChatButton = document.getElementById('clear-chat');
     const themeToggle = document.getElementById('theme-toggle');
     const webSearchToggle = document.getElementById('web-search-toggle');
     const webSearchLabel = document.getElementById('web-search-label');
@@ -10,15 +12,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let isWebSearchEnabled = false;
     let isThemeDark = true; // افتراضي: الوضع الداكن
     
+    // تحديث السنة الحالية في التذييل
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+    
     // تحميل حالة الوضع من التخزين المحلي
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.remove('dark-theme');
         document.body.classList.add('light-theme');
         isThemeDark = false;
     }
-    
-    // إضافة رسالة ترحيب
-    addMessageToChat('bot', 'مرحباً! أنا نور، كيف يمكنني مساعدتك اليوم؟');
     
     // تبديل الوضع (داكن/فاتح)
     themeToggle.addEventListener('click', function() {
@@ -58,18 +60,28 @@ document.addEventListener('DOMContentLoaded', function() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     });
     
-    // إرسال الرسالة عند النقر على زر الإرسال
-    sendButton.addEventListener('click', sendMessage);
+    // إرسال الرسالة عند تقديم النموذج
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        sendMessage();
+    });
     
     // إرسال الرسالة عند الضغط على Enter
     userInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             sendMessage();
         }
     });
     
     // مسح المحادثة
     clearButton.addEventListener('click', function() {
+        userInput.value = '';
+        userInput.focus();
+    });
+    
+    // مسح المحادثة بالكامل
+    clearChatButton.addEventListener('click', function() {
         // إضافة رسالة تأكيد
         if (confirm('هل أنت متأكد من رغبتك في مسح المحادثة؟')) {
             chatContainer.innerHTML = '';

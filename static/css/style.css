@@ -243,67 +243,83 @@ main {
     position: relative;
 }
 
+#chat-form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    position: relative;
+}
+
 #user-input {
     width: 100%;
     padding: 15px 20px;
-    border: 1px solid var(--dark-border);
+    border: 2px solid var(--dark-border);
     border-radius: var(--border-radius);
     background-color: var(--dark-input);
     color: var(--dark-text);
     font-size: 1rem;
     transition: var(--transition);
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    font-family: 'Cairo', sans-serif;
 }
 
 #user-input:focus {
     outline: none;
     border-color: var(--dark-accent);
-    box-shadow: 0 0 0 2px var(--dark-shadow-light);
+    box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.2);
 }
 
 .input-toggle-container {
     display: flex;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
     background-color: rgba(var(--dark-container-rgb), 0.7);
     border-radius: var(--border-radius);
-    padding: 8px 12px;
-    border: 1px solid var(--dark-border);
+    padding: 10px 15px;
+    border: 2px solid var(--dark-border);
 }
 
 .input-toggle {
-    background-color: var(--dark-accent);
-    color: var(--dark-text);
+    background: var(--gradient-saudi);
+    color: white;
     border: none;
     border-radius: 50%;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: var(--transition);
-    margin-left: 10px;
+    margin-left: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .input-toggle:hover {
-    background-color: var(--dark-accent-light);
+    background: var(--gradient-saudi-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.input-toggle:active {
+    transform: translateY(0);
 }
 
 .input-toggle-label {
-    color: var(--dark-text-secondary);
-    font-size: 0.85rem;
+    color: var(--dark-text);
+    font-size: 0.9rem;
     flex-grow: 1;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 500;
 }
 
 .input-buttons {
     display: flex;
     justify-content: space-between;
+    gap: 10px;
 }
 
 .action-button {
-    background-color: var(--dark-accent);
-    color: var(--dark-text);
     border: none;
     border-radius: var(--border-radius);
     padding: 12px 20px;
@@ -314,53 +330,61 @@ main {
     align-items: center;
     justify-content: center;
     flex: 1;
-    margin: 0 5px;
-}
-
-.action-button:first-child {
-    margin-right: 0;
-}
-
-.action-button:last-child {
-    margin-left: 0;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 600;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .action-button:hover {
-    background-color: var(--dark-accent-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-#send-button {
-    background-color: var(--dark-accent);
+.action-button:active {
+    transform: translateY(0);
 }
 
-#clear-button {
+.primary-button {
+    background: var(--gradient-saudi);
+    color: white;
+}
+
+.primary-button:hover {
+    background: var(--gradient-saudi-hover);
+}
+
+.secondary-button {
     background-color: var(--dark-accent-secondary);
+    color: var(--dark-text);
 }
 
-#clear-button:hover {
+.secondary-button:hover {
     background-color: var(--dark-accent-secondary-light);
+}
+
+.button-text {
+    margin-left: 8px;
 }
 
 .clear-chat-button {
     background-color: transparent;
     color: var(--dark-text-secondary);
     border: 1px solid var(--dark-border);
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius);
     padding: 10px 16px;
     margin: 16px auto;
     cursor: pointer;
     font-family: 'Cairo', sans-serif;
-    font-size: 14px;
     font-weight: 500;
     transition: var(--transition);
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .clear-chat-button:hover {
-    background-color: var(--dark-card);
+    background-color: rgba(var(--dark-container-rgb), 0.5);
     color: var(--dark-text);
-    border-color: var(--dark-accent-secondary);
-    box-shadow: 0 2px 8px var(--dark-shadow-light);
 }
 
 .top-buttons {

@@ -42,26 +42,28 @@
                 <button class="clear-chat-button" id="clear-chat">مسح المحادثة</button>
                 
                 <div class="chat-input-container">
-                    <div class="input-wrapper">
+                    <form id="chat-form" class="input-wrapper">
                         <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." dir="rtl">
                         
                         <!-- زر تبديل البحث على الإنترنت (فوق زر الإرسال) -->
                         <div class="input-toggle-container">
-                            <button id="web-search-toggle" class="toggle-button input-toggle">
+                            <button type="button" id="web-search-toggle" class="input-toggle">
                                 <i class="fas fa-globe"></i>
                             </button>
                             <span id="web-search-label" class="input-toggle-label">البحث على الإنترنت مع التفكير الذكي: معطل</span>
                         </div>
                         
                         <div class="input-buttons">
-                            <button id="send-button" class="action-button">
+                            <button type="submit" id="send-button" class="action-button primary-button">
+                                <span class="button-text">إرسال</span>
                                 <i class="fas fa-paper-plane"></i>
                             </button>
-                            <button id="clear-button" class="action-button">
+                            <button type="button" id="clear-button" class="action-button secondary-button">
+                                <span class="button-text">مسح</span>
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-                    </div>
+                    </form>
                 </div>
             </div>
         </main>
