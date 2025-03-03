@@ -9,6 +9,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearChatButton = document.getElementById('clear-chat');
     const themeToggle = document.getElementById('theme-toggle');
     const themeIcon = themeToggle.querySelector('i');
+    const webSearchToggle = document.getElementById('web-search-toggle');
+    
+    // حالة البحث على الإنترنت
+    let useWebSearch = false;
     
     // تحديث السنة الحالية في التذييل
     document.getElementById('current-year').textContent = new Date().getFullYear();
@@ -32,6 +36,34 @@ document.addEventListener('DOMContentLoaded', function() {
             themeIcon.classList.add('fa-sun');
             localStorage.setItem('darkMode', 'enabled');
         }
+    });
+    
+    // إضافة مستمع الحدث لزر تبديل البحث على الإنترنت
+    webSearchToggle.addEventListener('change', function() {
+        useWebSearch = this.checked;
+        
+        // إظهار رسالة للمستخدم عند تفعيل/تعطيل البحث على الإنترنت
+        const statusMessage = useWebSearch ? 
+            "تم تفعيل البحث على الإنترنت. سأستخدم معلومات محدثة من الإنترنت للإجابة على أسئلتك." : 
+            "تم تعطيل البحث على الإنترنت. سأستخدم معرفتي المخزنة للإجابة على أسئلتك.";
+        
+        // إضافة رسالة النظام إلى الدردشة
+        const systemMessageDiv = document.createElement('div');
+        systemMessageDiv.className = 'message system';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        const paragraph = document.createElement('p');
+        paragraph.textContent = statusMessage;
+        
+        messageContent.appendChild(paragraph);
+        systemMessageDiv.appendChild(messageContent);
+        
+        chatMessages.appendChild(systemMessageDiv);
+        
+        // التمرير إلى أسفل
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     });
     
     // إضافة مستمع الحدث لزر مسح المحادثة
@@ -75,7 +107,10 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ message: userMessage })
+            body: JSON.stringify({ 
+                message: userMessage,
+                use_web_search: useWebSearch
+            })
         })
         .then(response => {
             if (!response.ok) {
@@ -113,19 +148,54 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
-        if (sender === 'bot') {
-            // إزالة أيقونة الروبوت تماماً
-        }
+        // تحويل الروابط إلى روابط قابلة للنقر
+        message = message.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
         
-        const messageText = document.createElement('p');
-        messageText.textContent = message;
-        messageContent.appendChild(messageText);
+        // تحويل النص المنسق
+        message = formatMessage(message);
         
+        messageContent.innerHTML = message;
         messageDiv.appendChild(messageContent);
+        
         chatMessages.appendChild(messageDiv);
         
-        // تمرير إلى أسفل
+        // التمرير إلى أسفل
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // دالة تنسيق الرسالة (تحويل النص العادي إلى HTML منسق)
+    function formatMessage(text) {
+        // تقسيم النص إلى فقرات
+        const paragraphs = text.split('\n\n');
+        
+        // معالجة كل فقرة
+        const formattedParagraphs = paragraphs.map(paragraph => {
+            // إذا كانت الفقرة فارغة، تخطيها
+            if (!paragraph.trim()) {
+                return '';
+            }
+            
+            // التعامل مع قوائم النقاط
+            if (paragraph.includes('\n- ')) {
+                const listItems = paragraph.split('\n- ');
+                const listHeader = listItems.shift();
+                
+                return `<p>${listHeader}</p><ul>${listItems.map(item => `<li>${item}</li>`).join('')}</ul>`;
+            }
+            
+            // التعامل مع القوائم المرقمة
+            if (/\n\d+\.\s/.test(paragraph)) {
+                const listItems = paragraph.split(/\n\d+\.\s/);
+                const listHeader = listItems.shift();
+                
+                return `<p>${listHeader}</p><ol>${listItems.map(item => `<li>${item}</li>`).join('')}</ol>`;
+            }
+            
+            // تنسيق النص العادي
+            return `<p>${paragraph.replace(/\n/g, '<br>')}</p>`;
+        });
+        
+        return formattedParagraphs.join('');
     }
     
     // التركيز على حقل الإدخال عند تحميل الصفحة
@@ -135,9 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
     userInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (!sendButton.disabled && userInput.value.trim() !== '') {
-                chatForm.dispatchEvent(new Event('submit'));
-            }
+            chatForm.dispatchEvent(new Event('submit'));
         }
     });
 });

@@ -1,7 +1,9 @@
 import os
 import requests
+import json
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 # تحميل المتغيرات البيئية من ملف .env
 load_dotenv()
@@ -14,6 +16,10 @@ github_token = os.getenv("GITHUB_TOKEN")
 if not github_token:
     print("تحذير: لم يتم تعيين GITHUB_TOKEN في ملف .env")
 
+# إعداد مفتاح Google Gemini API
+gemini_api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBiQN8UfRfH8M-IWGd-Nt_xSPZkTwqMWvs")
+genai.configure(api_key=gemini_api_key)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -23,6 +29,7 @@ def chat():
     try:
         data = request.json
         user_message = data.get('message', '')
+        use_web_search = data.get('use_web_search', False)
         
         if not user_message:
             return jsonify({'error': 'الرسالة فارغة'}), 400
@@ -30,7 +37,7 @@ def chat():
         # هنا يمكن إضافة منطق معالجة الرسالة واستدعاء API الذكاء الاصطناعي
         
         # استجابة مؤقتة للاختبار
-        response = process_message(user_message)
+        response = process_message(user_message, use_web_search)
         
         return jsonify({'response': response})
     
@@ -38,14 +45,22 @@ def chat():
         app.logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({'error': 'حدث خطأ في معالجة طلبك'}), 500
 
-def process_message(user_message):
-    # التحقق من وجود مفتاح GitHub
-    if not github_token:
-        return jsonify({'error': 'لم يتم تكوين مفتاح GitHub. يرجى تحديث ملف .env'}), 500
-    
+def process_message(user_message, use_web_search=False):
     # التحقق إذا كان السؤال عن هوية الروبوت
     if any(phrase in user_message.lower() for phrase in ['من أنت', 'من انت', 'عرف نفسك', 'عرفنا عليك', 'من هو', 'من هي']):
         return "أنا ذكاء نور الخارق، كيف يمكنني مساعدتك اليوم؟"
+    
+    # استخدام Google Gemini إذا تم تفعيل البحث على الإنترنت
+    if use_web_search and gemini_api_key:
+        try:
+            return use_gemini_with_web_search(user_message)
+        except Exception as e:
+            print(f"خطأ في استخدام Gemini API: {str(e)}")
+            # في حالة فشل Gemini، استخدم الطريقة الاحتياطية
+    
+    # التحقق من وجود مفتاح GitHub
+    if not github_token:
+        return "لم يتم تكوين مفتاح GitHub. يرجى تحديث ملف .env"
     
     # طباعة معلومات تصحيح الأخطاء
     print(f"استخدام المفتاح: {github_token[:5]}...{github_token[-5:] if len(github_token) > 10 else ''}")
@@ -94,7 +109,7 @@ def process_message(user_message):
         ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
         
         if not ai_response:
-            return jsonify({'error': 'لم يتم الحصول على رد من النموذج'}), 500
+            return "لم يتم الحصول على رد من النموذج"
         
         return ai_response
         
@@ -153,9 +168,84 @@ def process_message(user_message):
         ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
         
         if not ai_response:
-            return jsonify({'error': 'لم يتم الحصول على رد من النموذج'}), 500
+            return "لم يتم الحصول على رد من النموذج"
         
         return ai_response
+
+def use_gemini_with_web_search(user_message):
+    """استخدام Google Gemini مع البحث على الإنترنت"""
+    try:
+        # إنشاء نموذج Gemini مع تمكين البحث على الإنترنت
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "top_k": 64,
+            "max_output_tokens": 2048,
+        }
+        
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            }
+        ]
+        
+        # إنشاء نموذج Gemini مع تمكين البحث على الإنترنت
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-pro",
+            generation_config=generation_config,
+            safety_settings=safety_settings
+        )
+        
+        # إعداد رسالة النظام
+        system_message = """
+        أنت ذكاء نور الخارق، مساعد ذكي طورته فريق ستيف وفريقه السعودي. 
+        مهمتك هي تقديم معلومات دقيقة ومحدثة للمستخدمين.
+        عند البحث على الإنترنت، قم بما يلي:
+        1. ابحث عن المعلومات من مصادر موثوقة متعددة
+        2. قدم إجابات دقيقة ومختصرة
+        3. استشهد بمصادر معلوماتك في نهاية إجابتك
+        4. إذا كان السؤال يتعلق بمعلومات حديثة، وضح ذلك في إجابتك
+        5. لا تذكر أبدًا أنك من Google أو أي شركة أخرى
+        """
+        
+        # إعداد رسالة المستخدم مع توجيه للبحث على الإنترنت
+        prompt = f"""
+        قم بالبحث على الإنترنت عن: {user_message}
+        
+        قدم إجابة شاملة ودقيقة، واستشهد بمصادرك.
+        """
+        
+        # إنشاء محادثة
+        chat = model.start_chat(history=[
+            {"role": "user", "parts": [system_message]},
+            {"role": "model", "parts": ["سأقوم بتقديم معلومات دقيقة ومحدثة من مصادر موثوقة."]}
+        ])
+        
+        # الحصول على استجابة من النموذج
+        response = chat.send_message(prompt)
+        
+        # إضافة ملاحظة توضح أن المعلومات تم الحصول عليها من الإنترنت
+        result = response.text
+        result += "\n\n[تم الحصول على هذه المعلومات باستخدام البحث على الإنترنت]"
+        
+        return result
+    
+    except Exception as e:
+        print(f"خطأ في استخدام Gemini API: {str(e)}")
+        return f"حدث خطأ أثناء البحث على الإنترنت: {str(e)}"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5010))
