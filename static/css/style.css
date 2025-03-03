@@ -1,17 +1,30 @@
 :root {
     --dark-bg: #0a1a0f;  /* خلفية داكنة مع لمسة خضراء */
+    --dark-bg-rgb: 10, 26, 15;
     --dark-container: #0f1f14;  /* خلفية المربع الرئيسي */
+    --dark-container-rgb: 15, 31, 20;
     --dark-card: #162820;  /* خلفية فقاعات الرسائل */
+    --dark-card-rgb: 22, 40, 32;
     --dark-accent: #007a3d;  /* اللون الأخضر السعودي الرئيسي */
+    --dark-accent-rgb: 0, 122, 61;
     --dark-accent-light: #00a050;  /* اللون الأخضر الفاتح للتأثيرات */
+    --dark-accent-light-rgb: 0, 160, 80;
     --dark-accent-dark: #00582d;  /* اللون الأخضر الداكن للتأثيرات */
+    --dark-accent-dark-rgb: 0, 88, 45;
     --dark-accent-secondary: #9c7b4a;  /* لون ذهبي ترابي رئيسي */
+    --dark-accent-secondary-rgb: 156, 123, 74;
     --dark-accent-secondary-light: #c09a6e;  /* لون ذهبي فاتح */
+    --dark-accent-secondary-light-rgb: 192, 154, 110;
     --dark-accent-secondary-dark: #7a5f38;  /* لون ذهبي داكن */
+    --dark-accent-secondary-dark-rgb: 122, 95, 56;
     --dark-text: #f8f8f8;  /* لون النص الأساسي */
+    --dark-text-rgb: 248, 248, 248;
     --dark-text-secondary: #b8c4d0;  /* لون النص الثانوي */
+    --dark-text-secondary-rgb: 184, 196, 208;
     --dark-border: #2a3a2f;  /* لون الحدود */
+    --dark-border-rgb: 42, 58, 47;
     --dark-input: #121f17;  /* خلفية حقول الإدخال */
+    --dark-input-rgb: 18, 31, 23;
     --dark-shadow: rgba(0, 0, 0, 0.25);  /* ظلال العناصر */
     --dark-shadow-light: rgba(0, 122, 61, 0.1);  /* ظلال خفيفة بلون أخضر */
     --gradient-saudi: linear-gradient(135deg, #007a3d, #00582d);  /* تدرج اللون الأخضر */
@@ -556,4 +569,46 @@ footer::before {
 
 .message-content p:last-child {
     margin-bottom: 0;
+}
+
+/* تنسيق المعلومات الخام من الإنترنت */
+.message.raw-info {
+    display: flex;
+    justify-content: flex-start;
+    margin: 10px 0;
+}
+
+.message.raw-info .message-content {
+    background: rgba(var(--dark-container-rgb), 0.7);
+    border: 1px dashed var(--dark-accent);
+    color: rgba(var(--dark-text-secondary-rgb), 0.85);
+    font-size: 0.85rem;
+    max-width: 90%;
+    padding: 10px 15px;
+    line-height: 1.4;
+}
+
+.raw-info-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: var(--dark-accent-light);
+    font-size: 0.9rem;
+}
+
+.raw-info-content {
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* تنسيق زر البحث على الإنترنت */
+.toggle-label {
+    font-size: 0.9rem;
+}
+
+/* تحديث نص زر البحث على الإنترنت */
+#web-search-label {
+    font-size: 0.85rem;
+    margin-right: 10px;
+    color: var(--dark-text-secondary);
 }

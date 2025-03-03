@@ -34,29 +34,30 @@ def chat():
         if not user_message:
             return jsonify({'error': 'الرسالة فارغة'}), 400
         
-        # هنا يمكن إضافة منطق معالجة الرسالة واستدعاء API الذكاء الاصطناعي
-        
         # استجابة مؤقتة للاختبار
-        response = process_message(user_message, use_web_search)
-        
-        return jsonify({'response': response})
+        if use_web_search:
+            # الحصول على معلومات من الإنترنت أولاً
+            raw_info = use_gemini_with_web_search(user_message)
+            
+            # ثم تحليل المعلومات وإعادة صياغتها بشكل ذكي
+            final_response = analyze_and_respond(user_message, raw_info)
+            
+            return jsonify({
+                'raw_info': raw_info,
+                'response': final_response
+            })
+        else:
+            response = process_message(user_message)
+            return jsonify({'response': response})
     
     except Exception as e:
         app.logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({'error': 'حدث خطأ في معالجة طلبك'}), 500
 
-def process_message(user_message, use_web_search=False):
+def process_message(user_message):
     # التحقق إذا كان السؤال عن هوية الروبوت
     if any(phrase in user_message.lower() for phrase in ['من أنت', 'من انت', 'عرف نفسك', 'عرفنا عليك', 'من هو', 'من هي']):
         return "أنا ذكاء نور الخارق، كيف يمكنني مساعدتك اليوم؟"
-    
-    # استخدام Google Gemini إذا تم تفعيل البحث على الإنترنت
-    if use_web_search and gemini_api_key:
-        try:
-            return use_gemini_with_web_search(user_message)
-        except Exception as e:
-            print(f"خطأ في استخدام Gemini API: {str(e)}")
-            # في حالة فشل Gemini، استخدم الطريقة الاحتياطية
     
     # التحقق من وجود مفتاح GitHub
     if not github_token:
@@ -209,43 +210,81 @@ def use_gemini_with_web_search(user_message):
             safety_settings=safety_settings
         )
         
-        # إعداد رسالة النظام
-        system_message = """
-        أنت ذكاء نور الخارق، مساعد ذكي طورته فريق ستيف وفريقه السعودي. 
-        مهمتك هي تقديم معلومات دقيقة ومحدثة للمستخدمين.
-        عند البحث على الإنترنت، قم بما يلي:
-        1. ابحث عن المعلومات من مصادر موثوقة متعددة
-        2. قدم إجابات دقيقة ومختصرة
-        3. استشهد بمصادر معلوماتك في نهاية إجابتك
-        4. إذا كان السؤال يتعلق بمعلومات حديثة، وضح ذلك في إجابتك
-        5. لا تذكر أبدًا أنك من Google أو أي شركة أخرى
-        """
-        
         # إعداد رسالة المستخدم مع توجيه للبحث على الإنترنت
         prompt = f"""
         قم بالبحث على الإنترنت عن: {user_message}
         
-        قدم إجابة شاملة ودقيقة، واستشهد بمصادرك.
+        قدم المعلومات الخام من مصادر متعددة. اذكر المصادر بوضوح. 
+        لا تقم بتحليل المعلومات أو تلخيصها، فقط قدم المعلومات الأساسية كما هي.
+        """
+        
+        # إنشاء محادثة
+        chat = model.start_chat()
+        
+        # الحصول على استجابة من النموذج
+        response = chat.send_message(prompt)
+        
+        return response.text
+    
+    except Exception as e:
+        print(f"خطأ في استخدام Gemini API: {str(e)}")
+        return f"حدث خطأ أثناء البحث على الإنترنت: {str(e)}"
+
+def analyze_and_respond(user_question, raw_info):
+    """تحليل المعلومات الخام وإعادة صياغتها بشكل ذكي"""
+    try:
+        # إنشاء نموذج Gemini للتحليل
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "top_k": 64,
+            "max_output_tokens": 2048,
+        }
+        
+        # إنشاء نموذج Gemini للتحليل
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-pro",
+            generation_config=generation_config
+        )
+        
+        # إعداد رسالة النظام
+        system_message = """
+        أنت ذكاء نور الخارق، مساعد ذكي طورته فريق ستيف وفريقه السعودي.
+        مهمتك هي تحليل المعلومات الخام وإعادة صياغتها بأسلوب ذكي ومفهوم.
+        
+        اتبع هذه الإرشادات:
+        1. حلل المعلومات الخام بعناية
+        2. قدم إجابة مختصرة ومفيدة
+        3. استخدم أسلوباً واضحاً وسهل الفهم
+        4. تأكد من دقة المعلومات
+        5. لا تذكر أبدًا أنك من Google أو أي شركة أخرى
+        6. لا تكرر أنك تقوم بتحليل معلومات، فقط قدم الإجابة مباشرة
+        """
+        
+        # إعداد رسالة التحليل
+        prompt = f"""
+        سؤال المستخدم: {user_question}
+        
+        المعلومات الخام من البحث على الإنترنت:
+        {raw_info}
+        
+        قم بتحليل هذه المعلومات وقدم إجابة ذكية ومختصرة ومفيدة للمستخدم.
         """
         
         # إنشاء محادثة
         chat = model.start_chat(history=[
             {"role": "user", "parts": [system_message]},
-            {"role": "model", "parts": ["سأقوم بتقديم معلومات دقيقة ومحدثة من مصادر موثوقة."]}
+            {"role": "model", "parts": ["سأقوم بتحليل المعلومات وتقديم إجابة ذكية ومفيدة."]}
         ])
         
         # الحصول على استجابة من النموذج
         response = chat.send_message(prompt)
         
-        # إضافة ملاحظة توضح أن المعلومات تم الحصول عليها من الإنترنت
-        result = response.text
-        result += "\n\n[تم الحصول على هذه المعلومات باستخدام البحث على الإنترنت]"
-        
-        return result
+        return response.text
     
     except Exception as e:
-        print(f"خطأ في استخدام Gemini API: {str(e)}")
-        return f"حدث خطأ أثناء البحث على الإنترنت: {str(e)}"
+        print(f"خطأ في تحليل المعلومات: {str(e)}")
+        return f"حدث خطأ أثناء تحليل المعلومات: {str(e)}"
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5010))

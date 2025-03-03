@@ -119,8 +119,17 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
-            // إضافة رد البوت إلى الدردشة
-            addMessage('bot', data.response);
+            // إذا كان البحث على الإنترنت مفعلاً، أضف المعلومات الخام والإجابة النهائية
+            if (useWebSearch && data.raw_info) {
+                // إضافة المعلومات الخام
+                addRawInfoToChat(data.raw_info);
+                
+                // إضافة الإجابة النهائية
+                addMessage('bot', data.response);
+            } else {
+                // إضافة الرد العادي
+                addMessage('bot', data.response);
+            }
         })
         .catch(error => {
             // إضافة رسالة الخطأ إلى الدردشة
@@ -157,6 +166,33 @@ document.addEventListener('DOMContentLoaded', function() {
         messageContent.innerHTML = message;
         messageDiv.appendChild(messageContent);
         
+        chatMessages.appendChild(messageDiv);
+        
+        // التمرير إلى أسفل
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // دالة إضافة معلومات خام إلى الدردشة
+    function addRawInfoToChat(content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message raw-info';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        // إضافة عنوان للمعلومات الخام
+        const titleElement = document.createElement('div');
+        titleElement.className = 'raw-info-title';
+        titleElement.textContent = 'معلومات من الإنترنت:';
+        messageContent.appendChild(titleElement);
+        
+        // تحويل الروابط إلى روابط قابلة للنقر وتنسيق النص
+        const contentElement = document.createElement('div');
+        contentElement.className = 'raw-info-content';
+        contentElement.innerHTML = formatMessage(content);
+        messageContent.appendChild(contentElement);
+        
+        messageDiv.appendChild(messageContent);
         chatMessages.appendChild(messageDiv);
         
         // التمرير إلى أسفل
