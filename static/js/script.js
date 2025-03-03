@@ -233,7 +233,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // دالة التمرير لأسفل المحادثة
     function scrollToBottom() {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // التأكد من أن التمرير يحدث بعد إضافة عنصر جديد
+        setTimeout(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 100);
     }
     
     // إظهار رسالة الخطأ
@@ -316,6 +319,33 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return { isIOS, isAndroid, isMobile, iphoneModel };
     }
+    
+    // دالة التأكد من ظهور شريط الإدخال وتحديث ارتفاعات العناصر بشكل ديناميكي
+    function ensureInputAreaVisible() {
+        // حساب ارتفاع منطقة الرسائل
+        const windowHeight = window.innerHeight;
+        const headerHeight = document.querySelector('.chat-header').offsetHeight;
+        const inputAreaHeight = document.querySelector('.input-area').offsetHeight;
+        
+        // تحديث ارتفاع حاوية الدردشة
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.style.paddingBottom = `${inputAreaHeight}px`;
+        }
+        
+        // تحديث هوامش منطقة الرسائل
+        const messagesContainer = document.querySelector('.messages-container');
+        if (messagesContainer) {
+            messagesContainer.style.marginBottom = `${inputAreaHeight/2}px`;
+        }
+        
+        // التمرير إلى آخر رسالة
+        scrollToBottom();
+    }
+    
+    // إضافة مستمعي الأحداث
+    window.addEventListener('load', ensureInputAreaVisible);
+    window.addEventListener('resize', ensureInputAreaVisible);
     
     // تنفيذ الكشف عن الجهاز عند التحميل
     detectDevice();
