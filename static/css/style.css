@@ -227,12 +227,16 @@ body {
 }
 
 .chat-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background-color: var(--dark-bg);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
     padding: var(--spacing-lg) var(--spacing-xl);
     border-bottom: 1px solid var(--dark-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--dark-bg);
 }
 
 .chat-header h1 {
@@ -264,7 +268,9 @@ body {
     flex-direction: column;
     background-color: var(--dark-bg);
     position: relative;
-    padding-bottom: 70px; /* إضافة مساحة للتكيف مع منطقة الإدخال الثابتة */
+    padding-bottom: 70px;
+    height: 100vh;
+    max-height: 100vh;
 }
 
 .messages-container {
@@ -274,7 +280,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
-    margin-bottom: 10px; /* إضافة هامش لأسفل منطقة الرسائل */
+    margin-bottom: 10px;
     scroll-behavior: smooth;
 }
 
@@ -810,6 +816,7 @@ body {
     textarea,
     input[type="text"] {
         font-size: 16px;
+        touch-action: manipulation;
     }
 }
 
@@ -836,4 +843,75 @@ body {
 
 .message.user .message-bubble {
     margin-left: auto;
+}
+
+.send-button, .mobile-menu-toggle, .theme-toggle, .message-bubble {
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    touch-action: manipulation;
+}
+
+.input-area button,
+.sidebar-header button,
+.chat-header button,
+.clickable {
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    touch-action: manipulation;
+    transition: transform 0.15s ease;
+}
+
+.input-area button:active,
+.sidebar-header button:active,
+.chat-header button:active,
+.clickable:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 480px) {
+    .messages-container {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: var(--spacing-md);
+        max-height: calc(100vh - 130px);
+    }
+    
+    .chat-header {
+        height: auto;
+        min-height: 60px;
+        padding: var(--spacing-sm);
+        display: flex;
+        align-items: center;
+    }
+    
+    .chat-header h1 {
+        font-size: 1.1rem;
+        margin: 0;
+        flex: 1;
+        text-align: center;
+    }
+    
+    .input-area {
+        padding: 10px;
+        height: auto;
+        min-height: 60px;
+    }
+    
+    #user-input {
+        padding: 12px;
+        border-radius: 20px;
+    }
+    
+    .send-button {
+        margin-right: 0;
+        width: 40px;
+        height: 40px;
+    }
+    
+    .message-bubble {
+        max-width: 85%;
+        padding: var(--spacing-md);
+        border-radius: 15px;
+    }
 }

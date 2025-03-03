@@ -133,6 +133,59 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // تحسين الاستجابة للمس على الأجهزة المحمولة
+    function enhanceTouchInteractions() {
+        // إضافة الفئة 'clickable' للعناصر القابلة للنقر
+        const clickableElements = document.querySelectorAll('.send-button, .mobile-menu-toggle, .theme-toggle, .message-bubble, button');
+        clickableElements.forEach(el => {
+            el.classList.add('clickable');
+        });
+        
+        // تحسين تجربة النقر على الأزرار
+        const allButtons = document.querySelectorAll('button, .button');
+        allButtons.forEach(button => {
+            button.addEventListener('touchstart', function() {
+                this.classList.add('button-active');
+            }, { passive: true });
+            
+            button.addEventListener('touchend', function() {
+                this.classList.remove('button-active');
+            }, { passive: true });
+        });
+        
+        // منع التكبير عند النقر المزدوج على العناصر
+        document.addEventListener('dblclick', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+        
+        // تحسين التمرير
+        const scrollContainers = document.querySelectorAll('.messages-container');
+        scrollContainers.forEach(container => {
+            container.style.webkitOverflowScrolling = 'touch';
+        });
+    }
+
+    // معالجة مشكلة الترجيع السريع أثناء النقر على الأزرار
+    function preventFastClicks() {
+        let lastClickTime = 0;
+        const clickableItems = document.querySelectorAll('.clickable, button, a');
+        
+        clickableItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                const currentTime = new Date().getTime();
+                const timeDiff = currentTime - lastClickTime;
+                
+                if (timeDiff < 300) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                
+                lastClickTime = currentTime;
+            });
+        });
+    }
+
     // دالة تعديل الواجهة بناءً على حجم الشاشة
     function adjustForScreenSize() {
         // تحديد نوع الجهاز
@@ -140,6 +193,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const isSmallScreen = window.innerWidth <= 480;
         const isTinyScreen = window.innerWidth <= 360;
         const isLargePhone = window.innerWidth <= 480 && window.innerHeight >= 800;
+        
+        // ضبط ارتفاع منطقة الدردشة ليناسب الشاشة
+        const chatContainer = document.querySelector('.chat-container');
+        const headerHeight = document.querySelector('.chat-header').offsetHeight;
+        const inputAreaHeight = document.querySelector('.input-area').offsetHeight;
+        
+        if (chatContainer) {
+            const viewportHeight = window.innerHeight;
+            chatContainer.style.height = `${viewportHeight}px`;
+            chatContainer.style.maxHeight = `${viewportHeight}px`;
+        }
         
         // تعديل عناصر واجهة المستخدم بناءً على حجم الشاشة
         if (isMobile) {
@@ -349,4 +413,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // تنفيذ الكشف عن الجهاز عند التحميل
     detectDevice();
+    
+    // تنفيذ الدوال عند تحميل الصفحة
+    window.addEventListener('load', function() {
+        detectDevice();
+        adjustForScreenSize();
+        ensureInputAreaVisible();
+        enhanceTouchInteractions();
+        preventFastClicks();
+    });
+    
+    // تحديث العناصر عند تغيير حجم النافذة
+    window.addEventListener('resize', function() {
+        adjustForScreenSize();
+        ensureInputAreaVisible();
+    });
+    
+    // تنفيذ عند تغيير اتجاه الشاشة
+    window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+            adjustForScreenSize();
+            ensureInputAreaVisible();
+        }, 200);
+    });
 });
