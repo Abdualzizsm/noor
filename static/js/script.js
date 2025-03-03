@@ -1,109 +1,124 @@
+// بمجرد تحميل المستند، قم بتنفيذ الكود التالي
 document.addEventListener('DOMContentLoaded', function() {
-    // تحديد العناصر
+    // المتغيرات العامة
     const chatForm = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
     const chatMessages = document.getElementById('chat-messages');
     const sendButton = document.getElementById('send-button');
     const loadingSpinner = document.getElementById('loading-spinner');
-    const buttonText = document.querySelector('.button-text');
     const clearChatButton = document.getElementById('clear-chat');
     const themeToggle = document.getElementById('theme-toggle');
-    const themeIcon = themeToggle.querySelector('i');
+    const currentYearSpan = document.getElementById('current-year');
+    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
     
-    // تحديث السنة الحالية في التذييل
-    document.getElementById('current-year').textContent = new Date().getFullYear();
+    // تعيين السنة الحالية في تذييل الصفحة
+    currentYearSpan.textContent = new Date().getFullYear();
     
-    // تفعيل الوضع المظلم افتراضيًا
-    document.body.classList.add('dark-mode');
-    themeIcon.classList.remove('fa-moon');
-    themeIcon.classList.add('fa-sun');
-    localStorage.setItem('darkMode', 'enabled');
+    // تعيين التركيز على حقل الإدخال عند تحميل الصفحة
+    userInput.focus();
     
-    // إضافة مستمع الحدث لزر تبديل الوضع
-    themeToggle.addEventListener('click', function() {
-        if (document.body.classList.contains('dark-mode')) {
-            document.body.classList.remove('dark-mode');
-            themeIcon.classList.remove('fa-sun');
-            themeIcon.classList.add('fa-moon');
-            localStorage.setItem('darkMode', 'disabled');
-        } else {
-            document.body.classList.add('dark-mode');
-            themeIcon.classList.remove('fa-moon');
-            themeIcon.classList.add('fa-sun');
-            localStorage.setItem('darkMode', 'enabled');
-        }
-    });
-    
-    // إضافة مستمع الحدث لزر مسح المحادثة
-    clearChatButton.addEventListener('click', function() {
-        // الاحتفاظ فقط برسالة الترحيب
-        const welcomeMessage = chatMessages.firstElementChild;
-        chatMessages.innerHTML = '';
-        chatMessages.appendChild(welcomeMessage);
-        
-        // إضافة تأثير الرسوم المتحركة
-        welcomeMessage.style.animation = 'none';
-        setTimeout(() => {
-            welcomeMessage.style.animation = 'fadeIn 0.3s ease-out';
-        }, 10);
-    });
-    
-    // إضافة مستمع الحدث لنموذج الدردشة
-    chatForm.addEventListener('submit', function(e) {
+    // معالج إرسال النموذج
+    chatForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        // الحصول على قيمة المدخلات وتنظيفها
         const userMessage = userInput.value.trim();
         
-        if (userMessage === '') {
+        // التحقق من أن الرسالة ليست فارغة
+        if (!userMessage) {
+            showError('لا يمكن إرسال رسالة فارغة.');
             return;
         }
         
-        // إضافة رسالة المستخدم إلى الدردشة
+        // إضافة رسالة المستخدم إلى المحادثة
         addMessage('user', userMessage);
         
-        // مسح حقل الإدخال
+        // مسح المدخلات وإعادة التركيز
         userInput.value = '';
+        userInput.focus();
         
-        // تعطيل الزر وإظهار مؤشر التحميل
-        sendButton.disabled = true;
-        loadingSpinner.style.display = 'block';
-        buttonText.style.opacity = '0.5';
+        // تمكين وضع التحميل
+        toggleLoading(true);
         
-        // إرسال الرسالة إلى الخادم
-        fetch('/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ message: userMessage })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('حدث خطأ في الاتصال بالخادم');
-            }
-            return response.json();
-        })
-        .then(data => {
-            // إضافة رد البوت إلى الدردشة
-            addMessage('bot', data.response);
-        })
-        .catch(error => {
-            // إضافة رسالة الخطأ إلى الدردشة
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = error.message || 'حدث خطأ في الاتصال بالخادم';
-            chatMessages.appendChild(errorDiv);
-        })
-        .finally(() => {
-            // إعادة تمكين الزر وإخفاء مؤشر التحميل
-            sendButton.disabled = false;
-            loadingSpinner.style.display = 'none';
-            buttonText.style.opacity = '1';
+        try {
+            // إرسال الرسالة إلى الخادم
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: userMessage })
+            });
             
-            // التركيز على حقل الإدخال
-            userInput.focus();
-        });
+            // التحقق من نجاح الاستجابة
+            if (!response.ok) {
+                throw new Error(`خطأ في استجابة الخادم: ${response.status}`);
+            }
+            
+            // تحويل الاستجابة إلى JSON
+            const data = await response.json();
+            
+            // إضافة رد الروبوت إلى المحادثة
+            addMessage('bot', data.response);
+            
+        } catch (error) {
+            console.error('خطأ في إرسال الرسالة:', error);
+            showError('حدث خطأ أثناء محاولة التواصل مع الخادم. يرجى المحاولة مرة أخرى لاحقًا.');
+        } finally {
+            // تعطيل وضع التحميل
+            toggleLoading(false);
+        }
     });
+    
+    // ضبط الحد الأقصى لارتفاع الإدخال وتكييفه مع المحتوى
+    userInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        const maxHeight = 120; // الحد الأقصى للارتفاع بالبكسل
+        this.style.height = Math.min(this.scrollHeight, maxHeight) + 'px';
+    });
+    
+    // دعم الإرسال بمفتاح الإدخال (مع مراعاة Shift+Enter لإضافة سطر جديد)
+    userInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendButton.click();
+        }
+    });
+    
+    // مسح المحادثة
+    clearChatButton.addEventListener('click', function() {
+        // إزالة جميع الرسائل باستثناء رسالة الترحيب
+        const messages = chatMessages.querySelectorAll('.message');
+        for (let i = 1; i < messages.length; i++) {
+            messages[i].remove();
+        }
+        
+        // إعادة التركيز إلى حقل الإدخال
+        userInput.focus();
+    });
+    
+    // تبديل السمة (المظلمة / الفاتحة) - وضع الظلام فقط حاليًا
+    themeToggle.addEventListener('click', function() {
+        // في المستقبل - تنفيذ تبديل السمة هنا
+        this.classList.toggle('active');
+    });
+    
+    // تبديل القائمة للأجهزة المحمولة
+    if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+        });
+        
+        // إغلاق القائمة الجانبية عند النقر خارجها على الأجهزة المحمولة
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(e.target) && 
+                e.target !== mobileMenuToggle) {
+                sidebar.classList.remove('active');
+            }
+        });
+    }
     
     // دالة إضافة رسالة إلى الدردشة
     function addMessage(sender, message) {
@@ -113,35 +128,90 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
+        // إنشاء الصورة الرمزية للرسالة
+        const messageAvatar = document.createElement('div');
+        messageAvatar.className = 'message-avatar';
+        
         if (sender === 'bot') {
-            const botIcon = document.createElement('div');
-            botIcon.className = 'bot-icon';
-            // إزالة حرف النون واستبداله بأيقونة
-            botIcon.innerHTML = '<i class="fas fa-robot"></i>';
-            messageContent.appendChild(botIcon);
+            messageAvatar.innerHTML = '<i class="fas fa-robot"></i>';
+        } else {
+            messageAvatar.innerHTML = '<i class="fas fa-user"></i>';
         }
         
-        const messageText = document.createElement('p');
-        messageText.textContent = message;
-        messageContent.appendChild(messageText);
+        // إنشاء فقاعة الرسالة
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble';
         
+        // إنشاء نص الرسالة
+        const messageText = document.createElement('div');
+        messageText.className = 'message-text';
+        
+        // تقسيم الرسالة إلى فقرات
+        const paragraphs = message.split('\n');
+        paragraphs.forEach(paragraph => {
+            if (paragraph.trim()) {
+                const p = document.createElement('p');
+                p.textContent = paragraph;
+                messageText.appendChild(p);
+            }
+        });
+        
+        // إضافة العناصر إلى هيكل الرسالة
+        messageBubble.appendChild(messageText);
+        messageContent.appendChild(messageAvatar);
+        messageContent.appendChild(messageBubble);
         messageDiv.appendChild(messageContent);
+        
+        // إضافة الرسالة إلى المحادثة
         chatMessages.appendChild(messageDiv);
         
-        // تمرير إلى أسفل
+        // التمرير التلقائي إلى أسفل
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
-    // التركيز على حقل الإدخال عند تحميل الصفحة
-    userInput.focus();
+    // إظهار رسالة الخطأ
+    function showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'message system error';
+        
+        const errorContent = document.createElement('div');
+        errorContent.className = 'message-content';
+        
+        const errorBubble = document.createElement('div');
+        errorBubble.className = 'message-bubble error-bubble';
+        
+        const errorText = document.createElement('div');
+        errorText.className = 'message-text';
+        errorText.innerHTML = `<p><i class="fas fa-exclamation-circle"></i> ${message}</p>`;
+        
+        errorBubble.appendChild(errorText);
+        errorContent.appendChild(errorBubble);
+        errorDiv.appendChild(errorContent);
+        
+        chatMessages.appendChild(errorDiv);
+        
+        // إزالة رسالة الخطأ بعد 5 ثوان
+        setTimeout(() => {
+            errorDiv.classList.add('fade-out');
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 300);
+        }, 5000);
+        
+        // التمرير التلقائي إلى أسفل
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
     
-    // إضافة مستمع الحدث للضغط على زر Enter
-    userInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            if (!sendButton.disabled && userInput.value.trim() !== '') {
-                chatForm.dispatchEvent(new Event('submit'));
-            }
+    // تبديل حالة التحميل
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            loadingSpinner.style.display = 'block';
+            sendButton.disabled = true;
+            sendButton.querySelector('i').style.display = 'none';
+        } else {
+            loadingSpinner.style.display = 'none';
+            sendButton.disabled = false;
+            sendButton.querySelector('i').style.display = 'block';
         }
-    });
+    }
 });
