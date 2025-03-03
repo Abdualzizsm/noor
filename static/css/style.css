@@ -608,42 +608,102 @@ footer::before {
 
 /* تنسيق المعلومات الخام من الإنترنت */
 .message.raw-info {
-    display: flex;
-    justify-content: flex-start;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 15px;
     margin: 10px 0;
+    max-width: 85%;
+    align-self: flex-start;
+    border-left: 4px solid #4CAF50;
 }
 
-.message.raw-info .message-content {
-    background: rgba(var(--dark-container-rgb), 0.7);
-    border: 1px dashed var(--dark-accent);
-    color: rgba(var(--dark-text-secondary-rgb), 0.85);
-    font-size: 0.85rem;
-    max-width: 90%;
-    padding: 10px 15px;
-    line-height: 1.4;
+.dark-theme .message.raw-info {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid #4CAF50;
 }
 
 .raw-info-title {
     font-weight: bold;
     margin-bottom: 8px;
-    color: var(--dark-accent-light);
-    font-size: 0.9rem;
+    color: #4CAF50;
+    font-size: 0.9em;
+    border-bottom: 1px solid rgba(76, 175, 80, 0.3);
+    padding-bottom: 5px;
 }
 
 .raw-info-content {
+    font-size: 0.9em;
+    line-height: 1.5;
+    color: var(--text-color);
     max-height: 200px;
     overflow-y: auto;
-    padding-right: 5px;
+    padding-right: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(76, 175, 80, 0.5) transparent;
 }
 
-/* تنسيق زر البحث على الإنترنت */
-.toggle-label {
-    font-size: 0.9rem;
+.raw-info-content::-webkit-scrollbar {
+    width: 6px;
 }
 
-/* تحديث نص زر البحث على الإنترنت */
-#web-search-label {
-    font-size: 0.85rem;
-    margin-right: 10px;
-    color: var(--dark-text-secondary);
+.raw-info-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.raw-info-content::-webkit-scrollbar-thumb {
+    background-color: rgba(76, 175, 80, 0.5);
+    border-radius: 10px;
+}
+
+.raw-info-source {
+    font-size: 0.8em;
+    color: #888;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* تحسين تنسيق الروابط في المعلومات الخام */
+.raw-info-content a {
+    color: #4CAF50;
+    text-decoration: none;
+    border-bottom: 1px dotted #4CAF50;
+}
+
+.raw-info-content a:hover {
+    color: #45a049;
+    border-bottom: 1px solid #45a049;
+}
+
+/* زر توسيع/تقليص المعلومات الخام */
+.toggle-raw-info {
+    background: none;
+    border: none;
+    color: #4CAF50;
+    font-size: 0.8em;
+    cursor: pointer;
+    padding: 5px;
+    margin-top: 5px;
+    display: block;
+    text-align: center;
+    width: 100%;
+}
+
+.toggle-raw-info:hover {
+    text-decoration: underline;
+}
+
+/* تنسيق رسائل النظام */
+.message.system {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-radius: 15px;
+    margin: 10px auto;
+    max-width: 80%;
+    text-align: center;
+    padding: 8px 15px;
+    border-left: 3px solid #FFC107;
+    font-size: 0.9em;
+    color: var(--text-color);
+}
+
+.dark-theme .message.system {
+    background-color: rgba(255, 193, 7, 0.15);
 }

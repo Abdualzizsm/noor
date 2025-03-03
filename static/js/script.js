@@ -189,8 +189,26 @@ document.addEventListener('DOMContentLoaded', function() {
         // تحويل الروابط إلى روابط قابلة للنقر وتنسيق النص
         const contentElement = document.createElement('div');
         contentElement.className = 'raw-info-content';
-        contentElement.innerHTML = formatMessage(content);
+        
+        // تنسيق المحتوى وتقسيمه إلى أقسام
+        const formattedContent = formatRawInfo(content);
+        contentElement.innerHTML = formattedContent;
         messageContent.appendChild(contentElement);
+        
+        // إضافة زر توسيع/تقليص
+        const toggleButton = document.createElement('button');
+        toggleButton.className = 'toggle-raw-info';
+        toggleButton.textContent = 'عرض المزيد من المعلومات';
+        toggleButton.addEventListener('click', function() {
+            if (contentElement.style.maxHeight) {
+                contentElement.style.maxHeight = null;
+                toggleButton.textContent = 'عرض المزيد من المعلومات';
+            } else {
+                contentElement.style.maxHeight = '500px';
+                toggleButton.textContent = 'عرض معلومات أقل';
+            }
+        });
+        messageContent.appendChild(toggleButton);
         
         messageDiv.appendChild(messageContent);
         chatContainer.appendChild(messageDiv);
@@ -199,10 +217,35 @@ document.addEventListener('DOMContentLoaded', function() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
     
+    // وظيفة تنسيق المعلومات الخام
+    function formatRawInfo(text) {
+        // تقسيم النص إلى أقسام بناءً على المصادر أو العناوين
+        let formattedText = text;
+        
+        // تحديد المصادر وتمييزها
+        formattedText = formattedText.replace(/المصدر: ([^\n]+)/gi, '<div class="raw-info-source">المصدر: $1</div>');
+        formattedText = formattedText.replace(/\[المصدر: ([^\]]+)\]/gi, '<div class="raw-info-source">المصدر: $1</div>');
+        formattedText = formattedText.replace(/\(المصدر: ([^\)]+)\)/gi, '<div class="raw-info-source">المصدر: $1</div>');
+        
+        // تمييز العناوين الفرعية
+        formattedText = formattedText.replace(/^([\d\-]+\. [^\n]+)$/gm, '<strong>$1</strong>');
+        
+        // تحويل الروابط إلى روابط قابلة للنقر
+        formattedText = formattedText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+        
+        // تحويل سطور النص الجديدة إلى علامات <br>
+        formattedText = formattedText.replace(/\n/g, '<br>');
+        
+        return formattedText;
+    }
+    
     // وظيفة تنسيق الرسالة (تحويل الروابط وتنسيق النص)
     function formatMessage(text) {
         // تحويل الروابط إلى روابط قابلة للنقر
         text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+        
+        // تمييز العناوين الفرعية
+        text = text.replace(/^([\d\-]+\. [^\n]+)$/gm, '<strong>$1</strong>');
         
         // تحويل سطور النص الجديدة إلى علامات <br>
         text = text.replace(/\n/g, '<br>');
