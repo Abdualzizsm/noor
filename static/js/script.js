@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const isMobile = window.innerWidth <= 768;
         const isSmallScreen = window.innerWidth <= 480;
         const isTinyScreen = window.innerWidth <= 360;
+        const isLargePhone = window.innerWidth <= 480 && window.innerHeight >= 800;
         
         // تعديل عناصر واجهة المستخدم بناءً على حجم الشاشة
         if (isMobile) {
@@ -158,6 +159,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // تعديلات إضافية للشاشات الصغيرة جدًا
         if (isTinyScreen) {
             adjustMessageBubbleWidth(98);
+        }
+        
+        // تعديلات خاصة بالهواتف ذات الشاشات الكبيرة (مثل iPhone Pro Max)
+        if (isLargePhone) {
+            document.body.classList.add('large-phone');
+        } else {
+            document.body.classList.remove('large-phone');
         }
         
         // التمرير إلى آخر رسالة
@@ -281,12 +289,32 @@ document.addEventListener('DOMContentLoaded', function() {
         const isAndroid = /android/.test(userAgent);
         const isMobile = isIOS || isAndroid || window.innerWidth <= 768;
         
+        // التحقق من نوع جهاز الآيفون
+        let iphoneModel = "";
+        if (isIOS && /iphone/.test(userAgent)) {
+            const height = window.screen.height;
+            const width = window.screen.width;
+            const screenSize = Math.max(height, width);
+            
+            // تقريبي للموديلات
+            if (screenSize >= 926) {
+                iphoneModel = "iphone-large"; // iPhone Pro Max models (12/13/14/15)
+                document.body.classList.add('iphone-pro-max');
+            } else if (screenSize >= 844) {
+                iphoneModel = "iphone-medium"; // iPhone Pro models
+                document.body.classList.add('iphone-pro');
+            } else {
+                iphoneModel = "iphone-small"; // Regular & Mini models
+                document.body.classList.add('iphone-regular');
+            }
+        }
+        
         // إضافة فئات CSS للجسم بناءً على نوع الجهاز
         if (isIOS) document.body.classList.add('ios-device');
         if (isAndroid) document.body.classList.add('android-device');
         if (isMobile) document.body.classList.add('mobile-device');
         
-        return { isIOS, isAndroid, isMobile };
+        return { isIOS, isAndroid, isMobile, iphoneModel };
     }
     
     // تنفيذ الكشف عن الجهاز عند التحميل
