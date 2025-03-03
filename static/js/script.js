@@ -213,8 +213,49 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(chatMessages, { childList: true });
     }
     
+    // تحسين أداء الصفحة
+    function optimizePagePerformance() {
+        // تأجيل تحميل الصور غير المهمة
+        const images = document.querySelectorAll('img:not([loading])');
+        images.forEach(img => {
+            if (!img.hasAttribute('loading') && !img.classList.contains('critical')) {
+                img.setAttribute('loading', 'lazy');
+            }
+        });
+        
+        // تحسين التفاعل مع الشبكة
+        let isRequestPending = false;
+        
+        // تعديل طريقة إرسال الرسائل
+        const originalSendMessage = sendMessage;
+        window.sendMessage = function(message) {
+            if (isRequestPending) return;
+            
+            isRequestPending = true;
+            
+            // إضافة timeout لإلغاء الطلب إذا استغرق وقتاً طويلاً
+            const timeoutId = setTimeout(() => {
+                isRequestPending = false;
+                showError('استغرق الطلب وقتاً طويلاً. يرجى المحاولة مرة أخرى.');
+            }, 30000); // 30 ثانية
+            
+            originalSendMessage(message)
+                .then(response => {
+                    clearTimeout(timeoutId);
+                    isRequestPending = false;
+                    return response;
+                })
+                .catch(error => {
+                    clearTimeout(timeoutId);
+                    isRequestPending = false;
+                    throw error;
+                });
+        };
+    }
+    
     // تنفيذ الإعداد عند تحميل الصفحة
     setupMobileExperience();
+    optimizePagePerformance();
     
     // التركيز على حقل الإدخال عند تحميل الصفحة
     userInput.focus();

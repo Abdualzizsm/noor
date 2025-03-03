@@ -7,3 +7,5 @@ services:
     envVars:
       - key: GITHUB_TOKEN
         sync: false
+    autoDeploy: true
+    plan: starter
