@@ -236,98 +236,109 @@ main {
     opacity: 0.3;
 }
 
-#chat-form {
+.input-wrapper {
     display: flex;
+    flex-direction: column;
     width: 100%;
-    gap: 10px;
+    position: relative;
 }
 
 #user-input {
-    flex: 1;
-    padding: 14px 18px;
+    width: 100%;
+    padding: 15px 20px;
     border: 1px solid var(--dark-border);
-    border-radius: var(--border-radius-md);
-    font-size: 16px;
-    outline: none;
-    transition: var(--transition);
-    font-family: 'Cairo', sans-serif;
+    border-radius: var(--border-radius);
     background-color: var(--dark-input);
     color: var(--dark-text);
-    box-shadow: 0 2px 5px var(--dark-shadow);
-    font-weight: 500;
+    font-size: 1rem;
+    transition: var(--transition);
+    margin-bottom: 10px;
 }
 
 #user-input:focus {
+    outline: none;
     border-color: var(--dark-accent);
-    box-shadow: 0 0 0 2px rgba(0, 122, 61, 0.15);
+    box-shadow: 0 0 0 2px var(--dark-shadow-light);
 }
 
-#user-input::placeholder {
-    color: var(--dark-text-secondary);
-    font-family: 'Cairo', sans-serif;
+.input-toggle-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    background-color: rgba(var(--dark-container-rgb), 0.7);
+    border-radius: var(--border-radius);
+    padding: 8px 12px;
+    border: 1px solid var(--dark-border);
 }
 
-#send-button {
-    background: var(--gradient-saudi);
-    color: white;
+.input-toggle {
+    background-color: var(--dark-accent);
+    color: var(--dark-text);
     border: none;
-    border-radius: var(--border-radius-md);
-    padding: 0 24px;
-    cursor: pointer;
-    font-family: 'Cairo', sans-serif;
-    font-weight: 600;
-    font-size: 16px;
-    transition: var(--transition);
-    position: relative;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 122, 61, 0.2);
+    cursor: pointer;
+    transition: var(--transition);
+    margin-left: 10px;
 }
 
-#send-button:hover {
-    background: var(--gradient-saudi-hover);
-    box-shadow: 0 4px 12px rgba(0, 122, 61, 0.3);
+.input-toggle:hover {
+    background-color: var(--dark-accent-light);
 }
 
-#send-button:active {
-    transform: translateY(1px);
+.input-toggle-label {
+    color: var(--dark-text-secondary);
+    font-size: 0.85rem;
+    flex-grow: 1;
 }
 
-#send-button:disabled {
-    background: #4a5568;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+.input-buttons {
+    display: flex;
+    justify-content: space-between;
 }
 
-.loading-spinner {
-    display: none;
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s ease-in-out infinite;
-    margin-right: 8px;
+.action-button {
+    background-color: var(--dark-accent);
+    color: var(--dark-text);
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 12px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    margin: 0 5px;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
+.action-button:first-child {
+    margin-right: 0;
 }
 
-.button-text {
-    margin-right: 5px;
+.action-button:last-child {
+    margin-left: 0;
 }
 
-.error-message {
-    color: #f56565;
-    text-align: center;
-    margin: 10px 0;
-    padding: 12px;
-    background-color: rgba(245, 101, 101, 0.1);
-    border-radius: var(--border-radius-sm);
-    border-right: 3px solid #f56565;
+.action-button:hover {
+    background-color: var(--dark-accent-light);
+}
+
+#send-button {
+    background-color: var(--dark-accent);
+}
+
+#clear-button {
+    background-color: var(--dark-accent-secondary);
+}
+
+#clear-button:hover {
+    background-color: var(--dark-accent-secondary-light);
 }
 
 .clear-chat-button {

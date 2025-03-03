@@ -22,13 +22,6 @@
             <button class="theme-toggle" id="theme-toggle" title="تبديل الوضع الليلي/النهاري">
                 <i class="fas fa-sun"></i>
             </button>
-            
-            <div class="toggle-container">
-                <button id="web-search-toggle" class="toggle-button">
-                    <i class="fas fa-globe"></i>
-                </button>
-                <span id="web-search-label" class="toggle-label">البحث على الإنترنت مع التفكير الذكي: معطل</span>
-            </div>
         </div>
         
         <header>
@@ -49,13 +42,26 @@
                 <button class="clear-chat-button" id="clear-chat">مسح المحادثة</button>
                 
                 <div class="chat-input-container">
-                    <form id="chat-form">
-                        <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." autocomplete="off" autofocus>
-                        <button type="submit" id="send-button">
-                            <div class="loading-spinner" id="loading-spinner"></div>
-                            <span class="button-text">إرسال</span>
-                        </button>
-                    </form>
+                    <div class="input-wrapper">
+                        <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." dir="rtl">
+                        
+                        <!-- زر تبديل البحث على الإنترنت (فوق زر الإرسال) -->
+                        <div class="input-toggle-container">
+                            <button id="web-search-toggle" class="toggle-button input-toggle">
+                                <i class="fas fa-globe"></i>
+                            </button>
+                            <span id="web-search-label" class="input-toggle-label">البحث على الإنترنت مع التفكير الذكي: معطل</span>
+                        </div>
+                        
+                        <div class="input-buttons">
+                            <button id="send-button" class="action-button">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                            <button id="clear-button" class="action-button">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
