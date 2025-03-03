@@ -13,7 +13,7 @@ if not github_token:
 
 # إعداد تطبيق Flask
 app = Flask(__name__)
-app.config['APP_NAME'] = 'نور (Noor)'
+app.config['APP_NAME'] = 'نور'
 
 @app.route('/')
 def index():
