@@ -17,10 +17,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let isThemeDark = true; // افتراضي: الوضع الداكن
     let typingSpeed = 15; // سرعة الكتابة (مللي ثانية لكل حرف)
     
-    // إضافة مؤشر البحث المباشر إلى الصفحة
+    // إضافة مؤشر التفكير إلى الصفحة
     const liveSearchIndicator = document.createElement('div');
     liveSearchIndicator.className = 'live-search-indicator';
-    liveSearchIndicator.innerHTML = 'جاري البحث على الإنترنت <i class="fas fa-circle-notch"></i>';
+    liveSearchIndicator.innerHTML = 'جاري التفكير <i class="fas fa-brain fa-spin"></i>';
     document.body.appendChild(liveSearchIndicator);
     
     // تحديث السنة الحالية في التذييل
@@ -64,19 +64,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // تبديل البحث على الإنترنت
+    // تبديل وضع التفكير
     webSearchToggle.addEventListener('click', function() {
         isWebSearchEnabled = !isWebSearchEnabled;
         
-        // تحديث زر البحث
+        // تحديث زر وضع التفكير
         if (isWebSearchEnabled) {
             webSearchToggle.classList.remove('btn-outline-success');
             webSearchToggle.classList.add('btn-success');
-            webSearchLabel.textContent = 'البحث: مفعل';
+            webSearchLabel.textContent = 'وضع التفكير: مفعل';
         } else {
             webSearchToggle.classList.remove('btn-success');
             webSearchToggle.classList.add('btn-outline-success');
-            webSearchLabel.textContent = 'البحث: معطل';
+            webSearchLabel.textContent = 'وضع التفكير: معطل';
         }
         
         // إضافة رسالة نظام لإعلام المستخدم بتغيير الإعداد
@@ -87,9 +87,9 @@ document.addEventListener('DOMContentLoaded', function() {
         messageContent.className = 'message-content';
         
         if (isWebSearchEnabled) {
-            messageContent.textContent = 'تم تفعيل البحث على الإنترنت. سيقوم نور بالبحث عن معلومات محدثة.';
+            messageContent.textContent = 'تم تفعيل وضع التفكير. سيقوم نور بالبحث عن معلومات محدثة.';
         } else {
-            messageContent.textContent = 'تم تعطيل البحث على الإنترنت. سيعتمد نور على معرفته المخزنة فقط.';
+            messageContent.textContent = 'تم تعطيل وضع التفكير. سيعتمد نور على معرفته المخزنة فقط.';
         }
         
         systemMessage.appendChild(messageContent);
@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // إضافة مؤشر التحميل
         const loadingIndicator = addLoadingIndicator();
         
-        // إظهار مؤشر البحث المباشر إذا كان البحث مفعلاً
+        // إظهار مؤشر التفكير إذا كان وضع التفكير مفعلاً
         if (isWebSearchEnabled) {
             liveSearchIndicator.classList.add('active');
         }
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 chatContainer.removeChild(loadingIndicator);
             }
             
-            // إخفاء مؤشر البحث المباشر
+            // إخفاء مؤشر التفكير
             liveSearchIndicator.classList.remove('active');
             
             // إذا كانت هناك معلومات خام من البحث، أضفها أولاً
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 chatContainer.removeChild(loadingIndicator);
             }
             
-            // إخفاء مؤشر البحث المباشر
+            // إخفاء مؤشر التفكير
             liveSearchIndicator.classList.remove('active');
             
             // إضافة رسالة خطأ
