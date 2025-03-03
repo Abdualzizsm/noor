@@ -17,8 +17,11 @@ if not github_token:
     print("تحذير: لم يتم تعيين GITHUB_TOKEN في ملف .env")
 
 # إعداد مفتاح Google Gemini API
-gemini_api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBiQN8UfRfH8M-IWGd-Nt_xSPZkTwqMWvs")
-genai.configure(api_key=gemini_api_key)
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+if not gemini_api_key:
+    print("تحذير: لم يتم تعيين GEMINI_API_KEY في ملف .env")
+else:
+    genai.configure(api_key=gemini_api_key)
 
 @app.route('/')
 def index():
@@ -287,6 +290,6 @@ def analyze_and_respond(user_question, raw_info):
         return f"حدث خطأ أثناء تحليل المعلومات: {str(e)}"
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5010))
+    port = int(os.environ.get('PORT', 5020))
     print(f"تم تشغيل {app.config['APP_NAME']} على الرابط: http://127.0.0.1:{port}")
     app.run(host='0.0.0.0', debug=False, port=port)
