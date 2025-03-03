@@ -70,12 +70,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // تحديث زر وضع التفكير
         if (isWebSearchEnabled) {
-            webSearchToggle.classList.remove('btn-outline-success');
-            webSearchToggle.classList.add('btn-success');
+            webSearchToggle.classList.remove('btn-outline-primary');
+            webSearchToggle.classList.add('btn-primary');
             webSearchLabel.textContent = 'وضع التفكير: مفعل';
         } else {
-            webSearchToggle.classList.remove('btn-success');
-            webSearchToggle.classList.add('btn-outline-success');
+            webSearchToggle.classList.remove('btn-primary');
+            webSearchToggle.classList.add('btn-outline-primary');
             webSearchLabel.textContent = 'وضع التفكير: معطل';
         }
         
