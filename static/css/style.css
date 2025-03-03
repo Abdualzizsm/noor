@@ -619,6 +619,52 @@ body.light-theme {
     border-color: var(--light-accent-dark);
 }
 
+.btn-accent {
+    background-color: var(--dark-accent);
+    border-color: var(--dark-accent);
+    color: white;
+}
+
+.btn-accent:hover, .btn-accent:focus {
+    background-color: var(--dark-accent-light);
+    border-color: var(--dark-accent-light);
+    color: white;
+}
+
+.btn-outline-accent {
+    color: var(--dark-accent);
+    border-color: var(--dark-accent);
+}
+
+.btn-outline-accent:hover, .btn-outline-accent:focus {
+    background-color: var(--dark-accent);
+    border-color: var(--dark-accent);
+    color: white;
+}
+
+.light-theme .btn-accent {
+    background-color: var(--light-accent);
+    border-color: var(--light-accent);
+    color: white;
+}
+
+.light-theme .btn-accent:hover, .light-theme .btn-accent:focus {
+    background-color: var(--light-accent-dark);
+    border-color: var(--light-accent-dark);
+    color: white;
+}
+
+.light-theme .btn-outline-accent {
+    color: var(--light-accent);
+    border-color: var(--light-accent);
+}
+
+.light-theme .btn-outline-accent:hover, .light-theme .btn-outline-accent:focus {
+    background-color: var(--light-accent);
+    border-color: var(--light-accent);
+    color: white;
+}
+
 .btn-outline-success {
     color: var(--dark-accent-secondary);
     border-color: var(--dark-accent-secondary);
@@ -661,6 +707,15 @@ body.light-theme {
     background-color: rgba(255, 255, 255, 0.1);
     border-color: var(--dark-text);
     color: var(--dark-text);
+}
+
+/* تنسيقات النصوص */
+.text-accent {
+    color: var(--dark-accent) !important;
+}
+
+.light-theme .text-accent {
+    color: var(--light-accent) !important;
 }
 
 /* تنسيقات الوضع الفاتح */
