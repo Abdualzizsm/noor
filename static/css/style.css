@@ -45,6 +45,11 @@
     --transition-fast: all 0.2s ease;
     --transition-normal: all 0.3s ease;
     --transition-slow: all 0.5s ease;
+    
+    /* إعدادات الشاشة للأجهزة المختلفة */
+    --sidebar-width-desktop: 280px;
+    --sidebar-width-tablet: 240px;
+    --sidebar-width-mobile: 280px;
 }
 
 /* إعادة تعيين */
@@ -52,6 +57,12 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    height: 100%;
+    width: 100%;
 }
 
 body {
@@ -63,12 +74,14 @@ body {
     min-height: 100vh;
     transition: var(--transition-normal);
     overflow: hidden;
+    height: 100%;
+    width: 100%;
 }
 
 /* هيكل التطبيق الرئيسي */
 .app-container {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: var(--sidebar-width-desktop) 1fr;
     height: 100vh;
     width: 100vw;
     overflow: hidden;
@@ -454,17 +467,40 @@ body {
 }
 
 /* تحسينات للجوال */
+@media (max-width: 1200px) {
+    html {
+        font-size: 15px;
+    }
+}
+
 @media (max-width: 1024px) {
+    html {
+        font-size: 14px;
+    }
+    
     .app-container {
-        grid-template-columns: 240px 1fr;
+        grid-template-columns: var(--sidebar-width-tablet) 1fr;
     }
     
     .chat-header h1 {
         font-size: 1.25rem;
     }
+    
+    .new-chat-button span {
+        font-size: 0.85rem;
+    }
+    
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+    }
 }
 
 @media (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+    
     .app-container {
         grid-template-columns: 1fr;
     }
@@ -473,7 +509,7 @@ body {
         position: fixed;
         top: 0;
         right: 0;
-        width: 280px;
+        width: var(--sidebar-width-mobile);
         transform: translateX(100%);
         box-shadow: var(--shadow-xl);
     }
@@ -493,17 +529,25 @@ body {
     .input-area {
         padding: var(--spacing-md);
     }
+    
+    .message {
+        max-width: 92%;
+    }
 }
 
 /* تحسينات خاصة للآيفون */
 @media (max-width: 480px) {
+    html {
+        font-size: 13px;
+    }
+    
     .chat-header h1 {
         font-size: 1.1rem;
     }
     
     #user-input {
         padding: var(--spacing-md) var(--spacing-lg);
-        font-size: 0.9rem;
+        font-size: 1rem;
     }
     
     .send-button {
@@ -522,6 +566,32 @@ body {
     
     .message {
         max-width: 95%;
+    }
+    
+    .input-area {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+}
+
+/* تحسينات خاصة للشاشات الصغيرة جداً */
+@media (max-width: 360px) {
+    html {
+        font-size: 12px;
+    }
+    
+    .chat-header h1 {
+        font-size: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .message {
+        max-width: 98%;
+    }
+    
+    .sidebar {
+        width: 85vw;
     }
 }
 

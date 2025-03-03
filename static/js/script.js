@@ -18,6 +18,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // تعيين التركيز على حقل الإدخال عند تحميل الصفحة
     userInput.focus();
     
+    // تعديل العرض بناءً على حجم الشاشة
+    adjustForScreenSize();
+    
+    // الاستجابة للتغييرات في حجم النافذة
+    window.addEventListener('resize', function() {
+        adjustForScreenSize();
+    });
+    
     // معالج إرسال النموذج
     chatForm.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -96,6 +104,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // إعادة التركيز إلى حقل الإدخال
         userInput.focus();
+        
+        // إغلاق القائمة الجانبية على الجوال بعد مسح المحادثة
+        if (window.innerWidth <= 768) {
+            sidebar.classList.remove('active');
+        }
     });
     
     // تبديل السمة (المظلمة / الفاتحة) - وضع الظلام فقط حاليًا
@@ -117,6 +130,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.target !== mobileMenuToggle) {
                 sidebar.classList.remove('active');
             }
+        });
+    }
+    
+    // دالة تعديل الواجهة بناءً على حجم الشاشة
+    function adjustForScreenSize() {
+        // تحديد نوع الجهاز
+        const isMobile = window.innerWidth <= 768;
+        const isSmallScreen = window.innerWidth <= 480;
+        const isTinyScreen = window.innerWidth <= 360;
+        
+        // تعديل عناصر واجهة المستخدم بناءً على حجم الشاشة
+        if (isMobile) {
+            // إغلاق الشريط الجانبي
+            sidebar.classList.remove('active');
+            
+            // تعديل حجم حقل الإدخال
+            userInput.placeholder = isSmallScreen ? "اكتب رسالتك..." : "اكتب رسالتك هنا...";
+            
+            // ضبط عرض فقاعات الرسائل
+            adjustMessageBubbleWidth(isSmallScreen ? 95 : 92);
+        } else {
+            // تعديل حجم فقاعات الرسائل للشاشات الكبيرة
+            adjustMessageBubbleWidth(88);
+        }
+        
+        // تعديلات إضافية للشاشات الصغيرة جدًا
+        if (isTinyScreen) {
+            adjustMessageBubbleWidth(98);
+        }
+        
+        // التمرير إلى آخر رسالة
+        scrollToBottom();
+    }
+    
+    // تعديل عرض فقاعات الرسائل
+    function adjustMessageBubbleWidth(widthPercentage) {
+        document.querySelectorAll('.message').forEach(message => {
+            message.style.maxWidth = `${widthPercentage}%`;
         });
     }
     
@@ -165,7 +216,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // إضافة الرسالة إلى المحادثة
         chatMessages.appendChild(messageDiv);
         
+        // تعديل عرض الرسالة بناءً على حجم الشاشة
+        adjustForScreenSize();
+        
         // التمرير التلقائي إلى أسفل
+        scrollToBottom();
+    }
+    
+    // دالة التمرير لأسفل المحادثة
+    function scrollToBottom() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
@@ -199,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
         
         // التمرير التلقائي إلى أسفل
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        scrollToBottom();
     }
     
     // تبديل حالة التحميل
@@ -214,4 +273,22 @@ document.addEventListener('DOMContentLoaded', function() {
             sendButton.querySelector('i').style.display = 'block';
         }
     }
+    
+    // الكشف عن نوع الجهاز
+    function detectDevice() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isIOS = /iphone|ipad|ipod/.test(userAgent);
+        const isAndroid = /android/.test(userAgent);
+        const isMobile = isIOS || isAndroid || window.innerWidth <= 768;
+        
+        // إضافة فئات CSS للجسم بناءً على نوع الجهاز
+        if (isIOS) document.body.classList.add('ios-device');
+        if (isAndroid) document.body.classList.add('android-device');
+        if (isMobile) document.body.classList.add('mobile-device');
+        
+        return { isIOS, isAndroid, isMobile };
+    }
+    
+    // تنفيذ الكشف عن الجهاز عند التحميل
+    detectDevice();
 });
