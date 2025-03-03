@@ -290,6 +290,5 @@ def analyze_and_respond(user_question, raw_info):
         return f"حدث خطأ أثناء تحليل المعلومات: {str(e)}"
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5020))
-    print(f"تم تشغيل {app.config['APP_NAME']} على الرابط: http://127.0.0.1:{port}")
-    app.run(host='0.0.0.0', debug=False, port=port)
+    print("تم تشغيل نور (Noor) على الرابط: http://127.0.0.1:5030")
+    app.run(host='0.0.0.0', port=5030)

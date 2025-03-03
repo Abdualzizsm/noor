@@ -187,11 +187,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // تحديث نص حالة البحث
         if (isWebSearchEnabled) {
-            webSearchLabel.textContent = 'البحث على الإنترنت مع التفكير الذكي: مفعل';
+            webSearchLabel.textContent = 'البحث على الإنترنت: مفعل';
             webSearchToggle.classList.add('active');
+            webSearchToggle.style.background = 'green';
+            webSearchToggle.style.color = 'white';
         } else {
-            webSearchLabel.textContent = 'البحث على الإنترنت مع التفكير الذكي: معطل';
+            webSearchLabel.textContent = 'البحث على الإنترنت: معطل';
             webSearchToggle.classList.remove('active');
+            webSearchToggle.style.background = '';
+            webSearchToggle.style.color = '';
         }
     }
 });
