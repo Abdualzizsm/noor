@@ -1,15 +1,20 @@
 /* المتغيرات */
 :root {
-    --bg-color: #ffffff;
-    --bg-dark: #121212;
-    --text-color: #333;
-    --text-light: #718096;
     --primary-color: #4a6cf7;
-    --primary-dark: #3a5bd9;
-    --border-color: #e2e8f0;
+    --secondary-color: #6a3ef8;
+    --text-color: #333;
+    --bg-color: #f8f9fa;
+    --chat-bg: #fff;
+    --user-msg-bg: #4a6cf7;
+    --user-msg-color: #fff;
+    --bot-msg-bg: #f1f3f5;
+    --bot-msg-color: #333;
+    --input-bg: #fff;
+    --input-border: #e2e8f0;
     --shadow-color: rgba(0, 0, 0, 0.1);
-    --bot-message-bg: #e9ecef;
-    --error-color: #e53e3e;
+    --border-radius: 18px;
+    --button-radius: 18px;
+    --font-family: 'Tajawal', sans-serif;
 }
 
 * {
@@ -19,7 +24,7 @@
 }
 
 body {
-    font-family: 'Tajawal', sans-serif;
+    font-family: var(--font-family);
     background-color: var(--bg-color);
     color: var(--text-color);
     direction: rtl;
@@ -44,7 +49,7 @@ header {
 header h1 {
     font-size: 2.5rem;
     margin: 0;
-    background: linear-gradient(45deg, #4a6cf7, #6a3ef8);
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -59,8 +64,8 @@ main {
 }
 
 .chat-container {
-    background-color: transparent;
-    border-radius: 8px;
+    background-color: var(--chat-bg);
+    border-radius: var(--border-radius);
     overflow: hidden;
     margin-bottom: 20px;
     flex: 1;
@@ -75,12 +80,13 @@ main {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .message {
     display: flex;
     flex-direction: column;
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 0.3s ease-in-out;
 }
 
 @keyframes fadeIn {
@@ -99,7 +105,7 @@ main {
 .message-content {
     max-width: 85%;
     padding: 12px 16px;
-    border-radius: 18px;
+    border-radius: var(--border-radius);
     position: relative;
     display: flex;
     align-items: flex-start;
@@ -107,14 +113,14 @@ main {
 }
 
 .message.user .message-content {
-    background-color: #4a6cf7;
-    color: white;
+    background-color: var(--user-msg-bg);
+    color: var(--user-msg-color);
     border-bottom-right-radius: 5px;
 }
 
 .message.bot .message-content {
-    background-color: #2d3748;
-    color: #e2e8f0;
+    background-color: var(--bot-msg-bg);
+    color: var(--bot-msg-color);
     border-bottom-left-radius: 5px;
 }
 
@@ -137,27 +143,28 @@ main {
 }
 
 .clear-chat-button {
-    background-color: #2d3748;
-    color: #e2e8f0;
-    border: 1px solid #4a5568;
-    border-radius: 5px;
+    background-color: var(--bot-msg-bg);
+    color: var(--bot-msg-color);
+    border: 1px solid var(--input-border);
+    border-radius: var(--button-radius);
     padding: 8px 15px;
     cursor: pointer;
-    font-family: 'Tajawal', sans-serif;
+    font-family: var(--font-family);
     font-size: 14px;
     transition: all 0.3s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .clear-chat-button:hover {
-    background-color: #4a5568;
+    background-color: var(--input-border);
 }
 
 .chat-input-container {
     padding: 15px;
     display: flex;
     background-color: transparent;
-    border: 1px solid #4a5568;
-    border-radius: 10px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--border-radius);
     margin-bottom: 20px;
 }
 
@@ -171,11 +178,11 @@ main {
     flex: 1;
     padding: 12px 15px;
     border: none;
-    background-color: transparent;
+    background-color: var(--input-bg);
     font-size: 16px;
     outline: none;
-    color: #e2e8f0;
-    font-family: 'Tajawal', sans-serif;
+    color: var(--text-color);
+    font-family: var(--font-family);
 }
 
 #user-input::placeholder {
@@ -184,21 +191,22 @@ main {
 
 #send-button {
     background-color: transparent;
-    color: #e2e8f0;
+    color: var(--primary-color);
     border: none;
     border-radius: 50%;
     width: 40px;
     height: 40px;
     cursor: pointer;
-    font-family: 'Tajawal', sans-serif;
+    font-family: var(--font-family);
     transition: background-color 0.3s;
     display: flex;
     align-items: center;
     justify-content: center;
+    -webkit-tap-highlight-color: transparent;
 }
 
 #send-button:hover {
-    background-color: #2d3748;
+    background-color: var(--bot-msg-bg);
 }
 
 #send-button:disabled {
@@ -244,75 +252,96 @@ footer {
     left: 20px;
     background: none;
     border: none;
-    color: #e2e8f0;
+    color: var(--primary-color);
     font-size: 20px;
     cursor: pointer;
     z-index: 100;
 }
 
-/* الوضع الليلي - الافتراضي */
-body {
-    background-color: #121212;
-    color: #e2e8f0;
-}
-
-/* الوضع النهاري */
-body.light-mode {
-    background-color: #ffffff;
-    color: #333;
-}
-
-body.light-mode .message.bot .message-content {
-    background-color: #e9ecef;
-    color: #333;
-}
-
-body.light-mode #user-input {
-    color: #333;
-}
-
-body.light-mode #user-input::placeholder {
-    color: #a0aec0;
-}
-
-body.light-mode .chat-input-container {
-    border-color: #e2e8f0;
-}
-
-body.light-mode #send-button {
-    color: #4a6cf7;
-}
-
-body.light-mode #send-button:hover {
-    background-color: #f7fafc;
-}
-
-body.light-mode .clear-chat-button {
-    background-color: #f8f9fa;
-    color: #718096;
-    border-color: #e2e8f0;
-}
-
-body.light-mode .clear-chat-button:hover {
-    background-color: #e2e8f0;
-}
-
-body.light-mode .theme-toggle {
-    color: #4a6cf7;
+.dark-theme {
+    --text-color: #e2e8f0;
+    --bg-color: #111827;
+    --chat-bg: #1f2937;
+    --user-msg-bg: #4a6cf7;
+    --user-msg-color: #fff;
+    --bot-msg-bg: #2d3748;
+    --bot-msg-color: #e2e8f0;
+    --input-bg: #374151;
+    --input-border: #4b5563;
+    --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
 /* التوافق مع الأجهزة المحمولة */
 @media (max-width: 768px) {
     .container {
         padding: 10px;
+        max-width: 100%;
+    }
+    
+    .chat-container {
+        margin-bottom: 10px;
     }
     
     .message-content {
         max-width: 90%;
+        padding: 10px 14px;
+    }
+    
+    header h1 {
+        font-size: 2rem;
     }
     
     #user-input {
-        font-size: 14px;
+        font-size: 16px;
+    }
+}
+
+/* تحسينات خاصة بالآيفون */
+@media (max-width: 414px) {
+    .container {
+        padding: 8px;
+    }
+    
+    .chat-messages {
+        padding: 10px;
+    }
+    
+    .message {
+        margin-bottom: 12px;
+    }
+    
+    .message-content {
+        padding: 10px 12px;
+        font-size: 15px;
+    }
+    
+    .chat-input-container {
+        padding: 0;
+        margin-bottom: 10px;
+    }
+    
+    #user-input {
+        padding: 10px 12px;
+    }
+    
+    .clear-chat-button {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    /* تصحيح لمشكلة لوحة المفاتيح في iOS */
+    @supports (-webkit-touch-callout: none) {
+        .chat-container {
+            padding-bottom: 20px;
+        }
+        
+        .chat-controls {
+            position: sticky;
+            bottom: 0;
+            background-color: var(--bg-color);
+            padding-top: 5px;
+            z-index: 10;
+        }
     }
 }
 

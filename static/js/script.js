@@ -187,6 +187,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
     
+    // تحسين تجربة المستخدم على الأجهزة المحمولة
+    function setupMobileExperience() {
+        // التعامل مع لوحة المفاتيح على iOS
+        const userInput = document.getElementById('user-input');
+        
+        // تمكين الزر عندما يكون هناك نص في حقل الإدخال
+        userInput.addEventListener('input', function() {
+            document.getElementById('send-button').disabled = this.value.trim() === '';
+        });
+        
+        // إضافة استجابة للنقر على الشاشة لإخفاء لوحة المفاتيح
+        document.addEventListener('click', function(event) {
+            if (event.target !== userInput && document.activeElement === userInput) {
+                userInput.blur();
+            }
+        });
+        
+        // تحسين التمرير بعد إضافة رسائل جديدة
+        const chatMessages = document.getElementById('chat-messages');
+        const observer = new MutationObserver(function() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+        
+        observer.observe(chatMessages, { childList: true });
+    }
+    
+    // تنفيذ الإعداد عند تحميل الصفحة
+    setupMobileExperience();
+    
     // التركيز على حقل الإدخال عند تحميل الصفحة
     userInput.focus();
 });
