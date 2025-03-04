@@ -1,259 +1,149 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نور - المساعد الذكي</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>نور (Noor) - مساعدك الذكي</title>
+    
+    <!-- Bootstrap 5 RTL CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" integrity="sha384-nU14brUcp6StFntEOOEBvcJm4huWjB0OcIeQ3fltAfSmuZFrkAif0T+UtNGlKKQv" crossorigin="anonymous">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 </head>
-<body>
-    <div class="container-fluid">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card app-card mt-4 mb-4">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h2 class="mb-0 text-center flex-grow-1">
-                            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نور" class="logo-img">
-                            نور - المساعد الذكي
-                        </h2>
-                        <div class="d-flex">
-                            {% if current_user.is_authenticated %}
-                            <a href="{{ url_for('dashboard') }}" class="btn btn-light ms-2">
-                                <i class="bi bi-grid-fill"></i> لوحة التحكم
-                            </a>
-                            <a href="{{ url_for('logout') }}" class="btn btn-light">
-                                <i class="bi bi-box-arrow-right"></i> تسجيل خروج
-                            </a>
-                            {% else %}
-                            <a href="{{ url_for('login') }}" class="btn btn-light ms-2">
-                                <i class="bi bi-box-arrow-in-right"></i> تسجيل دخول
-                            </a>
-                            <a href="{{ url_for('register') }}" class="btn btn-light">
-                                <i class="bi bi-person-plus-fill"></i> تسجيل جديد
-                            </a>
-                            {% endif %}
+<body class="dark-theme">
+    <div class="container-fluid vh-100 d-flex flex-column">
+        <div class="row flex-grow-1">
+            <!-- Sidebar -->
+            <div class="col-lg-3 col-md-4 sidebar p-0 d-none d-md-block">
+                <div class="sidebar-header p-3 d-flex justify-content-between align-items-center">
+                    <div class="logo">
+                        <h1 class="mb-0">نور</h1>
+                        <span>Noor</span>
+                    </div>
+                    <button id="theme-toggle" class="btn btn-outline-light btn-sm rounded-circle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+                <div class="sidebar-content p-3">
+                    <div class="sidebar-info mb-4">
+                        <p>مرحباً بك في نور، المساعد الذكي الذي يجمع بين قوة الذكاء الاصطناعي وسهولة الاستخدام.</p>
+                    </div>
+                    <div class="sidebar-features">
+                        <h5>المميزات:</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="fas fa-check-circle me-2 text-accent"></i> محادثة ذكية بالعربية</li>
+                            <li class="mb-2"><i class="fas fa-check-circle me-2 text-accent"></i> وضع التفكير المتقدم</li>
+                            <li class="mb-2"><i class="fas fa-check-circle me-2 text-accent"></i> تحليل ذكي للمعلومات</li>
+                            <li class="mb-2"><i class="fas fa-check-circle me-2 text-accent"></i> واجهة سهلة الاستخدام</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="sidebar-footer p-3 text-center">
+                    <p>تم التطوير بواسطة <span class="developer">فريق ستيف</span></p>
+                    <p>&copy; <span id="current-year">2023</span> جميع الحقوق محفوظة</p>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-lg-9 col-md-8 col-12 main-content p-0 d-flex flex-column">
+                <div class="chat-header p-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-light d-md-none me-2" id="sidebar-toggle">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <h2 class="mb-0">محادثة نور</h2>
+                    </div>
+                    <button id="clear-chat" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i> مسح المحادثة
+                    </button>
+                </div>
+                
+                <div class="chat-messages flex-grow-1 p-3" id="chat-messages">
+                    <div class="message bot">
+                        <div class="message-content">
+                            <p>مرحباً بك! أنا ذكاء نور، كيف يمكنني مساعدتك اليوم؟</p>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div id="chat-container">
-                            <div id="message-container">
-                                <div class="message assistant">
-                                    <div class="message-content">
-                                        <p>مرحباً بك في نور، المساعد الذكي الذي يتحدث العربية! كيف يمكنني مساعدتك اليوم؟</p>
-                                    </div>
-                                </div>
+                </div>
+                
+                <div class="chat-input-container p-3">
+                    <form id="chat-form" class="input-wrapper">
+                        <div class="input-group">
+                            <input type="text" id="user-input" class="form-control" placeholder="اكتب رسالتك هنا..." dir="rtl">
+                            
+                            <div class="web-search-toggle-wrapper ms-2 me-2 d-flex align-items-center">
+                                <button type="button" id="web-search-toggle" class="btn btn-outline-accent rounded-circle">
+                                    <i class="fas fa-brain"></i>
+                                </button>
+                                <span id="web-search-label" class="web-search-label ms-2 d-none d-sm-inline">وضع التفكير: معطل</span>
                             </div>
+                            
+                            <button type="submit" id="send-button" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i> إرسال
+                            </button>
+                            <button type="button" id="clear-button" class="btn btn-secondary ms-2">
+                                <i class="fas fa-trash me-1"></i> مسح
+                            </button>
                         </div>
-                        <div class="d-flex justify-content-between mt-3">
-                            <button class="btn btn-sm btn-outline-secondary me-2" id="clear-chat">
-                                <i class="bi bi-trash"></i> مسح المحادثة
-                            </button>
-                            {% if current_user.is_authenticated %}
-                            <button class="btn btn-sm btn-outline-primary" id="save-chat">
-                                <i class="bi bi-save"></i> حفظ المحادثة
-                            </button>
-                            {% else %}
-                            <button class="btn btn-sm btn-outline-primary" id="login-to-save">
-                                <i class="bi bi-save"></i> تسجيل الدخول لحفظ المحادثة
-                            </button>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <form id="chat-form" class="d-flex">
-                            <input type="text" id="user-input" class="form-control" placeholder="اكتب رسالتك هنا..." autocomplete="off">
-                            <button type="submit" class="btn btn-primary ms-2">
-                                <i class="bi bi-send-fill"></i>
-                            </button>
-                        </form>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const chatForm = document.getElementById('chat-form');
-            const userInput = document.getElementById('user-input');
-            const messageContainer = document.getElementById('message-container');
-            const clearChatButton = document.getElementById('clear-chat');
-            const saveChatButton = document.getElementById('save-chat') || document.getElementById('login-to-save');
-            
-            let messages = [];
-            
-            // إضافة رسالة البداية
-            messages.push({
-                role: 'assistant',
-                content: 'مرحباً بك في نور، المساعد الذكي الذي يتحدث العربية! كيف يمكنني مساعدتك اليوم؟'
-            });
-            
-            chatForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const userMessage = userInput.value.trim();
-                if (!userMessage) return;
-                
-                // إضافة رسالة المستخدم إلى واجهة المستخدم
-                addMessage('user', userMessage);
-                
-                // إضافة رسالة المستخدم إلى مصفوفة الرسائل
-                messages.push({
-                    role: 'user',
-                    content: userMessage
-                });
-                
-                // مسح حقل الإدخال
-                userInput.value = '';
-                
-                try {
-                    // إضافة علامة التحميل
-                    const loadingIndicator = document.createElement('div');
-                    loadingIndicator.className = 'message assistant';
-                    loadingIndicator.id = 'loading-message';
-                    loadingIndicator.innerHTML = `
-                        <div class="message-content">
-                            <div class="typing-indicator">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                            </div>
-                        </div>
-                    `;
-                    messageContainer.appendChild(loadingIndicator);
-                    messageContainer.scrollTop = messageContainer.scrollHeight;
-                    
-                    // إرسال الطلب إلى الخادم
-                    const response = await fetch('/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: userMessage
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('فشل الاتصال بالخادم');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    // إزالة علامة التحميل
-                    const loadingMessage = document.getElementById('loading-message');
-                    if (loadingMessage) {
-                        messageContainer.removeChild(loadingMessage);
-                    }
-                    
-                    if (data.error) {
-                        addMessage('assistant', `عذراً، حدث خطأ: ${data.error}`);
-                    } else {
-                        addMessage('assistant', data.response);
-                        
-                        // إضافة استجابة المساعد إلى مصفوفة الرسائل
-                        messages.push({
-                            role: 'assistant',
-                            content: data.response
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    
-                    // إزالة علامة التحميل
-                    const loadingMessage = document.getElementById('loading-message');
-                    if (loadingMessage) {
-                        messageContainer.removeChild(loadingMessage);
-                    }
-                    
-                    addMessage('assistant', 'عذراً، حدثت مشكلة في الاتصال. يرجى المحاولة مرة أخرى.');
-                }
-            });
-            
-            // وظيفة لإضافة رسالة إلى واجهة المستخدم
-            function addMessage(role, content) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${role}`;
-                
-                const messageContent = document.createElement('div');
-                messageContent.className = 'message-content';
-                
-                if (role === 'assistant') {
-                    // تحويل النص المنسق إلى HTML
-                    const sanitizedHtml = DOMPurify.sanitize(marked.parse(content));
-                    messageContent.innerHTML = sanitizedHtml;
-                } else {
-                    messageContent.textContent = content;
-                }
-                
-                messageDiv.appendChild(messageContent);
-                messageContainer.appendChild(messageDiv);
-                
-                // التمرير إلى أسفل
-                messageContainer.scrollTop = messageContainer.scrollHeight;
-            }
-            
-            // زر مسح المحادثة
-            clearChatButton.addEventListener('click', function() {
-                messageContainer.innerHTML = '';
-                messages = [];
-                
-                // إضافة رسالة البداية مرة أخرى
-                addMessage('assistant', 'مرحباً بك في نور، المساعد الذكي الذي يتحدث العربية! كيف يمكنني مساعدتك اليوم؟');
-                messages.push({
-                    role: 'assistant',
-                    content: 'مرحباً بك في نور، المساعد الذكي الذي يتحدث العربية! كيف يمكنني مساعدتك اليوم؟'
-                });
-            });
-            
-            // زر حفظ المحادثة
-            saveChatButton.addEventListener('click', async function() {
-                if (this.id === 'login-to-save') {
-                    window.location.href = "{{ url_for('login') }}";
-                    return;
-                }
-                
-                if (messages.length <= 1) {
-                    alert('لا توجد رسائل لحفظها');
-                    return;
-                }
-                
-                try {
-                    const response = await fetch('/save_conversation', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            messages: messages,
-                            title: 'محادثة ' + new Date().toLocaleString('ar')
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        alert(data.message);
-                        if (data.redirect) {
-                            window.location.href = data.redirect;
-                        }
-                    } else {
-                        if (data.redirect) {
-                            window.location.href = data.redirect;
-                        } else {
-                            alert(data.message || 'فشل حفظ المحادثة');
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('حدثت مشكلة في الاتصال. يرجى المحاولة مرة أخرى.');
-                }
-            });
-        });
-    </script>
+    
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay d-md-none" id="sidebar-overlay"></div>
+    
+    <!-- Mobile Sidebar -->
+    <div class="mobile-sidebar d-md-none" id="mobile-sidebar">
+        <div class="sidebar-header p-3 d-flex justify-content-between align-items-center">
+            <div class="logo">
+                <h1 class="mb-0">نور</h1>
+                <span>Noor</span>
+            </div>
+            <button id="close-sidebar" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="sidebar-content p-3">
+            <div class="sidebar-info mb-4">
+                <p>مرحباً بك في نور، المساعد الذكي الذي يجمع بين قوة الذكاء الاصطناعي وسهولة الاستخدام.</p>
+            </div>
+            <div class="sidebar-features">
+                <h5>المميزات:</h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="fas fa-check-circle me-2 text-accent"></i> محادثة ذكية بالعربية</li>
+                    <li class="mb-2"><i class="fas fa-check-circle me-2 text-accent"></i> وضع التفكير المتقدم</li>
+                    <li class="mb-2"><i class="fas fa-check-circle me-2 text-accent"></i> تحليل ذكي للمعلومات</li>
+                    <li class="mb-2"><i class="fas fa-check-circle me-2 text-accent"></i> واجهة سهلة الاستخدام</li>
+                </ul>
+            </div>
+        </div>
+        <div class="sidebar-footer p-3 text-center">
+            <p>تم التطوير بواسطة <span class="developer">فريق ستيف</span></p>
+            <p>&copy; <span id="current-year">2023</span> جميع الحقوق محفوظة</p>
+        </div>
+    </div>
+    
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
