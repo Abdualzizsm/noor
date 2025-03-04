@@ -434,8 +434,7 @@ def fallback_to_openai(query, conversation_context):
 
 @app.route('/')
 def index():
-    # إعادة تعيين الذاكرة عند بدء جلسة جديدة
-    conversation_memory.clear()
+    """عرض الصفحة الرئيسية مع المحادثة"""
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -600,179 +599,92 @@ def process_message(user_message, conversation_context):
         print(f"خطأ: {str(e)}")
         return f"عذراً، حدث خطأ: {str(e)}"
 
-def extract_entities(text):
-    """استخراج الكيانات من النص (مثل الأشخاص، الأماكن، التواريخ)"""
-    entities = []
-    
-    # قائمة بالكيانات المعروفة للاختبار
-    known_locations = ["الرياض", "جدة", "مكة", "المدينة", "الدمام", "الخبر", "أبها", "تبوك", "حائل", "نجران", 
-                      "السعودية", "مصر", "الإمارات", "قطر", "الكويت", "البحرين", "عمان", "الأردن", "لبنان"]
-    
-    known_persons = ["محمد", "أحمد", "علي", "عمر", "خالد", "عبدالله", "سلمان", "فهد", "سعود", "فيصل", 
-                    "نورة", "سارة", "فاطمة", "عائشة", "منى", "هند", "ريم", "لينا"]
-    
-    known_organizations = ["وزارة", "شركة", "مؤسسة", "هيئة", "جامعة", "مدرسة", "مستشفى", "مركز", "معهد"]
-    
-    # البحث عن الكيانات في النص
-    words = text.split()
-    for word in words:
-        # تنظيف الكلمة من علامات الترقيم
-        clean_word = word.strip(".,!?؟،:")
-        
-        # التحقق من الأماكن
-        for location in known_locations:
-            if location in clean_word:
-                entities.append({"type": "location", "value": location})
-        
-        # التحقق من الأشخاص
-        for person in known_persons:
-            if person in clean_word:
-                entities.append({"type": "person", "value": person})
-        
-        # التحقق من المنظمات
-        for org in known_organizations:
-            if org in clean_word:
-                entities.append({"type": "organization", "value": clean_word})
-    
-    # البحث عن التواريخ (تنفيذ بسيط)
-    date_indicators = ["يوم", "شهر", "سنة", "تاريخ", "الأسبوع", "الماضي", "القادم", "الحالي"]
-    for i, word in enumerate(words):
-        if any(indicator in word for indicator in date_indicators):
-            date_entity = " ".join(words[max(0, i-1):min(len(words), i+3)])
-            entities.append({"type": "date", "value": date_entity})
-    
-    # إزالة التكرارات
-    unique_entities = []
-    seen = set()
-    for entity in entities:
-        key = f"{entity['type']}:{entity['value']}"
-        if key not in seen:
-            seen.add(key)
-            unique_entities.append(entity)
-    
-    return unique_entities
-
-def extract_topics(text):
-    """استخراج المواضيع من النص"""
-    topics = []
-    
-    # قائمة بالمواضيع المعروفة وكلماتها المفتاحية
-    topic_keywords = {
-        "تاريخ": ["تاريخ", "هجري", "ميلادي", "سنة", "شهر", "يوم"],
-        "وقت": ["وقت", "ساعة", "دقيقة", "صباح", "مساء"],
-        "طقس": ["طقس", "حرارة", "درجة", "مطر", "رياح", "جو"],
-        "رياضة": ["كرة", "مباراة", "فريق", "لاعب", "بطولة", "دوري"],
-        "تقنية": ["حاسوب", "هاتف", "تطبيق", "برنامج", "إنترنت", "تقنية", "ذكاء اصطناعي"],
-        "صحة": ["صحة", "مرض", "علاج", "دواء", "طبيب"],
-        "تعليم": ["تعليم", "مدرسة", "جامعة", "طالب", "معلم", "دراسة", "امتحان"],
-        "اقتصاد": ["اقتصاد", "مال", "سوق", "شركة", "استثمار", "سهم", "عملة"],
-        "سفر": ["سفر", "سياحة", "فندق", "رحلة", "مطار", "تذكرة", "وجهة"],
-        "طعام": ["طعام", "أكل", "وصفة", "مطعم", "طبخ", "مكونات"]
-    }
-    
-    # البحث عن المواضيع في النص
-    for topic, keywords in topic_keywords.items():
-        for keyword in keywords:
-            if keyword in text.lower():
-                topics.append(topic)
-                break
-    
-    return topics
-
-def handle_date_time_query(user_message, conversation_context):
-    """معالجة استعلامات التاريخ والوقت"""
-    from datetime import datetime
-    import pytz
-    from hijri_converter import Gregorian
-    
-    # تحديد المنطقة الزمنية للمملكة العربية السعودية
-    saudi_tz = pytz.timezone('Asia/Riyadh')
-    now = datetime.now(saudi_tz)
-    
-    # تحويل التاريخ الميلادي إلى هجري
-    hijri_date = Gregorian(now.year, now.month, now.day).to_hijri()
-    
-    # تنسيق التاريخ والوقت
-    gregorian_date_str = now.strftime("%Y-%m-%d")
-    hijri_date_str = f"{hijri_date.year}-{hijri_date.month}-{hijri_date.day}"
-    time_str = now.strftime("%H:%M:%S")
-    
-    # تحديد نوع الاستعلام
-    if any(keyword in user_message.lower() for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
-        if 'هجري' in user_message.lower():
-            return f"التاريخ الهجري اليوم هو: {hijri_date_str}"
-        elif 'ميلادي' in user_message.lower():
-            return f"التاريخ الميلادي اليوم هو: {gregorian_date_str}"
-        else:
-            return f"اليوم هو: {gregorian_date_str} ميلادي، الموافق {hijri_date_str} هجري"
-    
-    elif any(keyword in user_message.lower() for keyword in ['الوقت', 'الساعة']):
-        return f"الوقت الآن هو: {time_str}"
-    
-    else:
-        return f"اليوم هو: {gregorian_date_str} ميلادي، الموافق {hijri_date_str} هجري\nالوقت الآن هو: {time_str}"
-
 @app.route('/chat', methods=['POST'])
 def chat():
-    try:
-        # الحصول على بيانات الطلب
-        data = request.get_json()
-        user_message = data.get('message', '')
-        
-        # التحقق من وجود رسالة
-        if not user_message:
-            return jsonify({'error': 'الرسالة مطلوبة'}), 400
-        
-        # الحصول على سجل المحادثة من الجلسة أو إنشاء سجل جديد
-        conversation_history = session.get('conversation_history', [])
-        
-        # إضافة رسالة المستخدم إلى سجل المحادثة
-        conversation_history.append({
-            "role": "user",
-            "content": user_message
-        })
-        
-        # تحديث ذاكرة المحادثة
-        conversation_memory.add_message("user", user_message)
-        
-        # استخراج الكيانات والمواضيع من رسالة المستخدم
-        entities = extract_entities(user_message)
-        topics = extract_topics(user_message)
-        
-        # تحديث الكيانات والمواضيع في ذاكرة المحادثة
-        for entity in entities:
-            conversation_memory.add_entity(entity)
-        
-        for topic in topics:
-            conversation_memory.add_topic(topic)
-        
-        # الحصول على استجابة من نموذج الذكاء الاصطناعي
-        ai_response = process_message(user_message, conversation_history)
-        
-        # إضافة استجابة النموذج إلى سجل المحادثة
-        conversation_history.append({
-            "role": "assistant",
-            "content": ai_response
-        })
-        
-        # تحديث ذاكرة المحادثة بالاستجابة
-        conversation_memory.add_message("assistant", ai_response)
-        
-        # تحديث سجل المحادثة في الجلسة
-        session['conversation_history'] = conversation_history
-        
-        # إرجاع الاستجابة
-        return jsonify({
-            'response': ai_response,
-            'context': {
-                'active_topics': conversation_memory.get_active_topics(),
-                'recent_entities': conversation_memory.get_recent_entities(5)
-            }
-        })
+    """معالجة طلبات الدردشة"""
+    data = request.json
+    user_message = data['message']
+    conversation_id = data.get('conversation_id')
     
+    # التحقق من وجود الأخطاء في الرسالة المستلمة
+    if not user_message or user_message.strip() == '':
+        return jsonify({
+            'error': 'الرجاء إدخال رسالة صالحة'
+        }), 400
+    
+    # إذا كان المستخدم مسجلاً وتم توفير معرف المحادثة، أضف الرسالة إلى قاعدة البيانات
+    if current_user.is_authenticated and conversation_id:
+        try:
+            conversation = Conversation.query.get(conversation_id)
+            # تأكد من أن المحادثة تنتمي للمستخدم الحالي
+            if conversation and conversation.user_id == current_user.id:
+                # حفظ رسالة المستخدم
+                user_db_message = Message(content=user_message, role='user', conversation_id=conversation_id)
+                db.session.add(user_db_message)
+                db.session.commit()
+        except Exception as e:
+            print(f"خطأ في حفظ رسالة المستخدم: {e}")
+            # استمر في المحادثة حتى لو فشل حفظ الرسالة
+    
+    # الحصول على استجابة من نموذج الذكاء الاصطناعي
+    ai_response = process_message(user_message, [])
+    
+    # إرجاع الاستجابة
+    return jsonify({
+        'response': ai_response
+    })
+
+@app.route('/save_conversation', methods=['POST'])
+def save_conversation():
+    """حفظ محادثة للمستخدم الحالي"""
+    # إذا لم يكن المستخدم مسجلاً، اطلب منه تسجيل الدخول أولاً
+    if not current_user.is_authenticated:
+        return jsonify({
+            'success': False,
+            'message': 'يرجى تسجيل الدخول أولاً',
+            'redirect': url_for('login')
+        }), 401
+        
+    data = request.json
+    messages = data.get('messages', [])
+    title = data.get('title', 'محادثة جديدة')
+    
+    if not messages:
+        return jsonify({
+            'success': False,
+            'message': 'لا توجد رسائل لحفظها'
+        }), 400
+    
+    try:
+        # إنشاء محادثة جديدة
+        conversation = Conversation(title=title, user_id=current_user.id)
+        db.session.add(conversation)
+        db.session.flush()  # للحصول على معرف المحادثة
+        
+        # إضافة جميع الرسائل
+        for msg in messages:
+            message = Message(
+                content=msg['content'],
+                role=msg['role'],
+                conversation_id=conversation.id
+            )
+            db.session.add(message)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'conversation_id': conversation.id,
+            'message': 'تم حفظ المحادثة بنجاح',
+            'redirect': url_for('conversation', conversation_id=conversation.id)
+        })
     except Exception as e:
-        app.logger.error(f"Error in chat endpoint: {str(e)}")
-        return jsonify({'error': 'حدث خطأ في معالجة طلبك'}), 500
+        db.session.rollback()
+        print(f"خطأ في حفظ المحادثة: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'حدث خطأ أثناء حفظ المحادثة'
+        }), 500
 
 @app.route('/api/conversation/<int:conversation_id>/messages', methods=['POST'])
 @login_required

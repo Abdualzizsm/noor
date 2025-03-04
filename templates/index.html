@@ -1,145 +1,259 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نور - المساعد الذكي</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .hero {
-            background-color: #007bff;
-            color: white;
-            padding: 80px 0;
-            text-align: center;
-        }
-        .features {
-            padding: 60px 0;
-        }
-        .feature-card {
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            height: 100%;
-            background-color: white;
-            transition: transform 0.3s;
-        }
-        .feature-card:hover {
-            transform: translateY(-5px);
-        }
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: #007bff;
-        }
-        .cta-section {
-            background-color: #f0f0f0;
-            padding: 60px 0;
-            text-align: center;
-        }
-        footer {
-            background-color: #343a40;
-            color: white;
-            padding: 30px 0;
-            margin-top: auto;
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
 </head>
 <body>
-    <!-- قائمة التنقل -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white">
-        <div class="container">
-            <a class="navbar-brand" href="#">نور</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#">الرئيسية</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#features">المميزات</a>
-                    </li>
-                </ul>
-                <div class="d-flex">
-                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary me-2">تسجيل الدخول</a>
-                    <a href="{{ url_for('register') }}" class="btn btn-primary">إنشاء حساب</a>
-                </div>
-            </div>
-        </div>
-    </nav>
-    
-    <!-- القسم الرئيسي -->
-    <section class="hero">
-        <div class="container">
-            <h1 class="display-4 mb-4">نور - المساعد الذكي</h1>
-            <p class="lead mb-4">مساعدك الشخصي الذي يفهم احتياجاتك ويساعدك في الإجابة على أسئلتك بذكاء</p>
-            <div>
-                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">ابدأ الآن</a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- قسم المميزات -->
-    <section class="features" id="features">
-        <div class="container">
-            <h2 class="text-center mb-5">مميزات نور</h2>
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="bi bi-chat-dots"></i>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card app-card mt-4 mb-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0 text-center flex-grow-1">
+                            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نور" class="logo-img">
+                            نور - المساعد الذكي
+                        </h2>
+                        <div class="d-flex">
+                            {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-light ms-2">
+                                <i class="bi bi-grid-fill"></i> لوحة التحكم
+                            </a>
+                            <a href="{{ url_for('logout') }}" class="btn btn-light">
+                                <i class="bi bi-box-arrow-right"></i> تسجيل خروج
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('login') }}" class="btn btn-light ms-2">
+                                <i class="bi bi-box-arrow-in-right"></i> تسجيل دخول
+                            </a>
+                            <a href="{{ url_for('register') }}" class="btn btn-light">
+                                <i class="bi bi-person-plus-fill"></i> تسجيل جديد
+                            </a>
+                            {% endif %}
                         </div>
-                        <h4>محادثة ذكية</h4>
-                        <p>يفهم نور سياق المحادثة ويتذكر تفاصيلها، مما يجعل المحادثة أكثر طبيعية وفعالية.</p>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="bi bi-clock-history"></i>
+                    <div class="card-body">
+                        <div id="chat-container">
+                            <div id="message-container">
+                                <div class="message assistant">
+                                    <div class="message-content">
+                                        <p>مرحباً بك في نور، المساعد الذكي الذي يتحدث العربية! كيف يمكنني مساعدتك اليوم؟</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <h4>سجل المحادثات</h4>
-                        <p>احتفظ بسجل كامل لمحادثاتك السابقة وارجع إليها في أي وقت تحتاجها.</p>
+                        <div class="d-flex justify-content-between mt-3">
+                            <button class="btn btn-sm btn-outline-secondary me-2" id="clear-chat">
+                                <i class="bi bi-trash"></i> مسح المحادثة
+                            </button>
+                            {% if current_user.is_authenticated %}
+                            <button class="btn btn-sm btn-outline-primary" id="save-chat">
+                                <i class="bi bi-save"></i> حفظ المحادثة
+                            </button>
+                            {% else %}
+                            <button class="btn btn-sm btn-outline-primary" id="login-to-save">
+                                <i class="bi bi-save"></i> تسجيل الدخول لحفظ المحادثة
+                            </button>
+                            {% endif %}
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="bi bi-shield-check"></i>
-                        </div>
-                        <h4>خصوصية وأمان</h4>
-                        <p>بياناتك ومحادثاتك محمية بالكامل، ولا يمكن لأحد الوصول إليها سواك.</p>
+                    <div class="card-footer">
+                        <form id="chat-form" class="d-flex">
+                            <input type="text" id="user-input" class="form-control" placeholder="اكتب رسالتك هنا..." autocomplete="off">
+                            <button type="submit" class="btn btn-primary ms-2">
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
-    
-    <!-- قسم الدعوة للعمل -->
-    <section class="cta-section">
-        <div class="container">
-            <h2 class="mb-4">جاهز للبدء؟</h2>
-            <p class="lead mb-4">انضم إلى الآلاف من المستخدمين الذين يستفيدون من خدمات نور الذكية</p>
-            <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">سجل الآن</a>
-        </div>
-    </section>
-    
-    <!-- تذييل الصفحة -->
-    <footer>
-        <div class="container text-center">
-            <p>جميع الحقوق محفوظة &copy; 2025 نور - المساعد الذكي</p>
-        </div>
-    </footer>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatForm = document.getElementById('chat-form');
+            const userInput = document.getElementById('user-input');
+            const messageContainer = document.getElementById('message-container');
+            const clearChatButton = document.getElementById('clear-chat');
+            const saveChatButton = document.getElementById('save-chat') || document.getElementById('login-to-save');
+            
+            let messages = [];
+            
+            // إضافة رسالة البداية
+            messages.push({
+                role: 'assistant',
+                content: 'مرحباً بك في نور، المساعد الذكي الذي يتحدث العربية! كيف يمكنني مساعدتك اليوم؟'
+            });
+            
+            chatForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const userMessage = userInput.value.trim();
+                if (!userMessage) return;
+                
+                // إضافة رسالة المستخدم إلى واجهة المستخدم
+                addMessage('user', userMessage);
+                
+                // إضافة رسالة المستخدم إلى مصفوفة الرسائل
+                messages.push({
+                    role: 'user',
+                    content: userMessage
+                });
+                
+                // مسح حقل الإدخال
+                userInput.value = '';
+                
+                try {
+                    // إضافة علامة التحميل
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'message assistant';
+                    loadingIndicator.id = 'loading-message';
+                    loadingIndicator.innerHTML = `
+                        <div class="message-content">
+                            <div class="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    `;
+                    messageContainer.appendChild(loadingIndicator);
+                    messageContainer.scrollTop = messageContainer.scrollHeight;
+                    
+                    // إرسال الطلب إلى الخادم
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: userMessage
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('فشل الاتصال بالخادم');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // إزالة علامة التحميل
+                    const loadingMessage = document.getElementById('loading-message');
+                    if (loadingMessage) {
+                        messageContainer.removeChild(loadingMessage);
+                    }
+                    
+                    if (data.error) {
+                        addMessage('assistant', `عذراً، حدث خطأ: ${data.error}`);
+                    } else {
+                        addMessage('assistant', data.response);
+                        
+                        // إضافة استجابة المساعد إلى مصفوفة الرسائل
+                        messages.push({
+                            role: 'assistant',
+                            content: data.response
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    
+                    // إزالة علامة التحميل
+                    const loadingMessage = document.getElementById('loading-message');
+                    if (loadingMessage) {
+                        messageContainer.removeChild(loadingMessage);
+                    }
+                    
+                    addMessage('assistant', 'عذراً، حدثت مشكلة في الاتصال. يرجى المحاولة مرة أخرى.');
+                }
+            });
+            
+            // وظيفة لإضافة رسالة إلى واجهة المستخدم
+            function addMessage(role, content) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${role}`;
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+                
+                if (role === 'assistant') {
+                    // تحويل النص المنسق إلى HTML
+                    const sanitizedHtml = DOMPurify.sanitize(marked.parse(content));
+                    messageContent.innerHTML = sanitizedHtml;
+                } else {
+                    messageContent.textContent = content;
+                }
+                
+                messageDiv.appendChild(messageContent);
+                messageContainer.appendChild(messageDiv);
+                
+                // التمرير إلى أسفل
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+            }
+            
+            // زر مسح المحادثة
+            clearChatButton.addEventListener('click', function() {
+                messageContainer.innerHTML = '';
+                messages = [];
+                
+                // إضافة رسالة البداية مرة أخرى
+                addMessage('assistant', 'مرحباً بك في نور، المساعد الذكي الذي يتحدث العربية! كيف يمكنني مساعدتك اليوم؟');
+                messages.push({
+                    role: 'assistant',
+                    content: 'مرحباً بك في نور، المساعد الذكي الذي يتحدث العربية! كيف يمكنني مساعدتك اليوم؟'
+                });
+            });
+            
+            // زر حفظ المحادثة
+            saveChatButton.addEventListener('click', async function() {
+                if (this.id === 'login-to-save') {
+                    window.location.href = "{{ url_for('login') }}";
+                    return;
+                }
+                
+                if (messages.length <= 1) {
+                    alert('لا توجد رسائل لحفظها');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/save_conversation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            messages: messages,
+                            title: 'محادثة ' + new Date().toLocaleString('ar')
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(data.message);
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    } else {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        } else {
+                            alert(data.message || 'فشل حفظ المحادثة');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('حدثت مشكلة في الاتصال. يرجى المحاولة مرة أخرى.');
+                }
+            });
+        });
+    </script>
 </body>
 </html>
