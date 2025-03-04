@@ -1,19 +1,78 @@
 import os
 import requests
 import json
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import google.generativeai as genai
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 from hijri_converter import Gregorian, Hijri
+import re
+import uuid
 
-# تحميل المتغيرات البيئية من ملف .env
+# تحميل المتغيرات البيئية
 load_dotenv()
 
 app = Flask(__name__)
 app.config['APP_NAME'] = 'نور (Noor)'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_secret_key_change_in_production')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///noor.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# إعداد قاعدة البيانات
+db = SQLAlchemy(app)
+
+# نماذج قاعدة البيانات
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    conversations = db.relationship('Conversation', backref='user', lazy=True)
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+        
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+class Conversation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False, default="محادثة جديدة")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    messages = db.relationship('Message', backref='conversation', lazy=True, cascade="all, delete-orphan")
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # 'user' أو 'assistant'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'content': self.content,
+            'role': self.role,
+            'created_at': self.created_at.isoformat()
+        }
+
+# إعداد مدير تسجيل الدخول
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'يرجى تسجيل الدخول للوصول إلى هذه الصفحة'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 # التحقق من وجود مفتاح GitHub
 github_token = os.getenv("GITHUB_TOKEN")
@@ -24,73 +83,456 @@ if not github_token:
 gemini_api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBiQN8UfRfH8M-IWGd-Nt_xSPZkTwqMWvs")
 genai.configure(api_key=gemini_api_key)
 
-# متغير عالمي لتخزين سجل المحادثة
-conversation_history = []
+# تكوين نظام الذاكرة المتقدم للمحادثة
+class ConversationMemory:
+    def __init__(self, max_messages=20, max_topics=5):
+        self.messages = []  # سجل الرسائل الكامل
+        self.topics = {}    # المواضيع المكتشفة في المحادثة
+        self.entities = {}  # الكيانات المستخرجة من المحادثة
+        self.max_messages = max_messages
+        self.max_topics = max_topics
+        self.importance_scores = {}  # درجات أهمية الرسائل
+    
+    def add_message(self, role, content):
+        """إضافة رسالة جديدة إلى الذاكرة"""
+        message = {
+            "role": role,
+            "content": content,
+            "timestamp": datetime.now(),
+            "id": len(self.messages)
+        }
+        self.messages.append(message)
+        
+        # تحديث المواضيع والكيانات
+        self._update_topics_and_entities(message)
+        
+        # حساب درجة الأهمية
+        self._calculate_importance(message)
+        
+        # الحفاظ على الحد الأقصى للرسائل
+        if len(self.messages) > self.max_messages:
+            # حذف الرسائل الأقل أهمية بدلاً من الأقدم فقط
+            self._prune_messages()
+    
+    def _update_topics_and_entities(self, message):
+        """تحديث المواضيع والكيانات المستخرجة من الرسالة"""
+        content = message["content"].lower()
+        
+        # قائمة بالمواضيع المحتملة والكلمات المفتاحية المرتبطة بها
+        potential_topics = {
+            "تاريخ": ["تاريخ", "هجري", "ميلادي", "سنة", "شهر", "يوم"],
+            "وقت": ["وقت", "ساعة", "دقيقة", "صباح", "مساء"],
+            "طقس": ["طقس", "حرارة", "درجة", "مطر", "رياح", "جو"],
+            "أخبار": ["خبر", "أخبار", "حدث", "عاجل", "تقرير"],
+            "تقنية": ["تقنية", "برمجة", "حاسوب", "إنترنت", "ذكاء اصطناعي"],
+            "دين": ["إسلام", "قرآن", "حديث", "صلاة", "دعاء", "رمضان"],
+            "رياضة": ["رياضة", "كرة", "مباراة", "فريق", "لاعب"],
+            "صحة": ["صحة", "مرض", "علاج", "دواء", "طبيب"],
+            "تعليم": ["تعليم", "دراسة", "مدرسة", "جامعة", "طالب"]
+        }
+        
+        # تحديث المواضيع
+        for topic, keywords in potential_topics.items():
+            for keyword in keywords:
+                if keyword in content:
+                    self.topics[topic] = self.topics.get(topic, 0) + 1
+        
+        # الحفاظ على الحد الأقصى للمواضيع
+        if len(self.topics) > self.max_topics:
+            # الاحتفاظ بالمواضيع الأكثر تكراراً فقط
+            self.topics = dict(sorted(self.topics.items(), key=lambda x: x[1], reverse=True)[:self.max_topics])
+        
+        # استخراج الكيانات (مثل الأسماء والأماكن والتواريخ)
+        # هذا تنفيذ مبسط، يمكن استخدام مكتبات NLP متقدمة مثل spaCy
+        entities = self._extract_entities(content)
+        for entity, entity_type in entities:
+            if entity_type not in self.entities:
+                self.entities[entity_type] = []
+            if entity not in self.entities[entity_type]:
+                self.entities[entity_type].append(entity)
+    
+    def _extract_entities(self, text):
+        """استخراج الكيانات من النص (تنفيذ مبسط)"""
+        entities = []
+        
+        # استخراج التواريخ المحتملة
+        date_patterns = [
+            r'\d{1,2}/\d{1,2}/\d{2,4}',
+            r'\d{1,2}-\d{1,2}-\d{2,4}',
+            r'\d{1,2}\s+(?:يناير|فبراير|مارس|أبريل|مايو|يونيو|يوليو|أغسطس|سبتمبر|أكتوبر|نوفمبر|ديسمبر)\s+\d{4}'
+        ]
+        
+        for pattern in date_patterns:
+            matches = re.findall(pattern, text)
+            for match in matches:
+                entities.append((match, "تاريخ"))
+        
+        # استخراج الأماكن المحتملة (قائمة مبسطة)
+        places = ["الرياض", "جدة", "مكة", "المدينة", "الدمام", "السعودية", "مصر", "الإمارات"]
+        for place in places:
+            if place in text:
+                entities.append((place, "مكان"))
+        
+        return entities
+    
+    def _calculate_importance(self, message):
+        """حساب درجة أهمية الرسالة"""
+        content = message["content"]
+        importance = 1.0  # القيمة الافتراضية
+        
+        # الرسائل الطويلة قد تكون أكثر أهمية
+        importance += min(len(content) / 100, 2.0)
+        
+        # الرسائل التي تحتوي على كلمات مفتاحية مهمة
+        important_keywords = ["مهم", "ضروري", "عاجل", "احتاج", "ساعدني", "كيف", "لماذا", "متى"]
+        for keyword in important_keywords:
+            if keyword in content.lower():
+                importance += 0.5
+        
+        # الرسائل الأحدث أكثر أهمية
+        recency_factor = 1.0  # أحدث رسالة
+        
+        # تخزين درجة الأهمية
+        self.importance_scores[message["id"]] = importance * recency_factor
+    
+    def _prune_messages(self):
+        """حذف الرسائل الأقل أهمية للحفاظ على الحد الأقصى"""
+        # ترتيب الرسائل حسب الأهمية
+        sorted_messages = sorted(
+            range(len(self.messages)), 
+            key=lambda i: self.importance_scores.get(i, 0),
+            reverse=True
+        )
+        
+        # الاحتفاظ بالرسائل المهمة فقط
+        keep_indices = sorted_messages[:self.max_messages]
+        keep_indices.sort()  # إعادة ترتيبها حسب التسلسل الزمني
+        
+        self.messages = [self.messages[i] for i in keep_indices]
+        
+        # تحديث المعرفات
+        for i, message in enumerate(self.messages):
+            message["id"] = i
+            self.importance_scores[i] = self.importance_scores.pop(message["id"], 1.0)
+    
+    def get_relevant_context(self, query, max_messages=10):
+        """الحصول على السياق الأكثر صلة بالاستعلام"""
+        if not self.messages:
+            return []
+        
+        # حساب درجة التشابه بين الاستعلام وكل رسالة
+        similarities = {}
+        query_words = set(query.lower().split())
+        
+        for message in self.messages:
+            content = message["content"].lower()
+            content_words = set(content.split())
+            
+            # حساب تشابه جاكارد البسيط
+            intersection = len(query_words.intersection(content_words))
+            union = len(query_words.union(content_words))
+            
+            similarity = intersection / union if union > 0 else 0
+            
+            # تعزيز أهمية الرسائل الحديثة
+            recency_boost = 1.0 - (0.05 * (len(self.messages) - 1 - message["id"]))
+            recency_boost = max(0.5, recency_boost)  # لا تقل عن 0.5
+            
+            # الدرجة النهائية تجمع بين التشابه والحداثة والأهمية
+            final_score = (
+                similarity * 0.5 + 
+                recency_boost * 0.3 + 
+                self.importance_scores.get(message["id"], 1.0) * 0.2
+            )
+            
+            similarities[message["id"]] = final_score
+        
+        # ترتيب الرسائل حسب الصلة
+        sorted_messages = sorted(
+            self.messages, 
+            key=lambda msg: similarities.get(msg["id"], 0),
+            reverse=True
+        )
+        
+        # إرجاع الرسائل الأكثر صلة
+        return sorted_messages[:max_messages]
+    
+    def get_active_topics(self, top_n=3):
+        """الحصول على المواضيع النشطة في المحادثة"""
+        sorted_topics = sorted(self.topics.items(), key=lambda x: x[1], reverse=True)
+        return [topic for topic, count in sorted_topics[:top_n]]
+    
+    def get_recent_entities(self, entity_type=None):
+        """الحصول على الكيانات الحديثة من نوع معين"""
+        if entity_type:
+            return self.entities.get(entity_type, [])
+        return self.entities
+    
+    def clear(self):
+        """مسح الذاكرة"""
+        self.messages = []
+        self.topics = {}
+        self.entities = {}
+        self.importance_scores = {}
+
+# إنشاء كائن الذاكرة
+conversation_memory = ConversationMemory(max_messages=30, max_topics=10)
+
+def enhance_query_with_context(user_message, conversation_context):
+    """تحسين استعلام المستخدم باستخدام سياق المحادثة"""
+    # إذا كانت الرسالة قصيرة جدًا، قد تكون متابعة لسؤال سابق
+    if len(user_message.split()) <= 3:
+        # البحث عن الضمائر والإشارات
+        pronouns = ["هو", "هي", "هم", "هذا", "هذه", "ذلك", "تلك", "هؤلاء", "أولئك"]
+        contains_pronoun = any(pronoun in user_message.lower().split() for pronoun in pronouns)
+        
+        # إذا كانت تحتوي على ضمير، ابحث عن المرجع في المحادثة السابقة
+        if contains_pronoun and conversation_context:
+            # ابحث عن آخر رسالة من المستخدم
+            for msg in reversed(conversation_context):
+                if msg["role"] == "user" and msg["content"] != user_message:
+                    # دمج السؤال السابق مع السؤال الحالي
+                    return f"{msg['content']} - {user_message}"
+    
+    # التعامل مع الأسئلة المتعلقة بالمواضيع النشطة
+    active_topics = conversation_memory.get_active_topics()
+    for topic in active_topics:
+        topic_keywords = {
+            "تاريخ": ["تاريخ", "هجري", "ميلادي", "سنة", "شهر", "يوم"],
+            "وقت": ["وقت", "ساعة", "دقيقة", "صباح", "مساء"],
+            "طقس": ["طقس", "حرارة", "درجة", "مطر", "رياح", "جو"],
+            # ... إلخ
+        }
+        
+        # إذا كان السؤال يتعلق بموضوع نشط، أضف سياقًا إضافيًا
+        if topic in topic_keywords:
+            for keyword in topic_keywords[topic]:
+                if keyword in user_message.lower():
+                    # ابحث عن آخر رسالة متعلقة بهذا الموضوع
+                    for msg in reversed(conversation_context):
+                        if msg["role"] == "user" and any(kw in msg["content"].lower() for kw in topic_keywords[topic]):
+                            if msg["content"] != user_message:
+                                return f"{user_message} (بناءً على سؤالك السابق: {msg['content']})"
+    
+    # التعامل مع الأسئلة التي تحتوي على كلمات مثل "أيضًا" أو "كذلك"
+    follow_up_indicators = ["أيضا", "أيضًا", "كذلك", "بالإضافة", "وماذا عن", "وماذا بخصوص"]
+    if any(indicator in user_message.lower() for indicator in follow_up_indicators) and conversation_context:
+        # ابحث عن آخر رسالة من المستخدم
+        for msg in reversed(conversation_context):
+            if msg["role"] == "user" and msg["content"] != user_message:
+                # دمج السؤال السابق مع السؤال الحالي
+                return f"{msg['content']} وأيضًا {user_message}"
+    
+    # التعامل مع الأسئلة التي تبدأ بـ "و" أو "ثم"
+    if user_message.strip().startswith(("و", "ثم", "بعد ذلك")) and conversation_context:
+        # ابحث عن آخر رسالة من المستخدم
+        for msg in reversed(conversation_context):
+            if msg["role"] == "user" and msg["content"] != user_message:
+                return f"{msg['content']} {user_message}"
+    
+    # إذا لم يتم تحسين الاستعلام، أعد الرسالة الأصلية
+    return user_message
+
+def resolve_references(text, conversation_context):
+    """حل الإشارات والضمائر في النص"""
+    # قائمة بالضمائر والإشارات الشائعة في اللغة العربية
+    pronouns = {
+        "هو": {"gender": "male", "count": "singular"},
+        "هي": {"gender": "female", "count": "singular"},
+        "هم": {"gender": "male", "count": "plural"},
+        "هن": {"gender": "female", "count": "plural"},
+        "هذا": {"gender": "male", "count": "singular", "distance": "near"},
+        "هذه": {"gender": "female", "count": "singular", "distance": "near"},
+        "ذلك": {"gender": "male", "count": "singular", "distance": "far"},
+        "تلك": {"gender": "female", "count": "singular", "distance": "far"},
+        "هؤلاء": {"count": "plural", "distance": "near"},
+        "أولئك": {"count": "plural", "distance": "far"}
+    }
+    
+    # استخراج الكيانات من المحادثة السابقة
+    entities = {}
+    for msg in conversation_context:
+        # تحليل بسيط للكيانات (يمكن استخدام مكتبات NLP متقدمة)
+        content_words = msg["content"].split()
+        for i, word in enumerate(content_words):
+            # تخمين الكيانات بناءً على الأحرف الكبيرة (في اللغة الإنجليزية) أو الكلمات المعروفة
+            if word in ["الرياض", "جدة", "مكة", "السعودية", "مصر"]:
+                entities[word] = {"type": "location", "gender": "female"}
+            # يمكن إضافة المزيد من القواعد هنا
+    
+    # استبدال الضمائر والإشارات بمراجعها
+    words = text.split()
+    for i, word in enumerate(words):
+        if word in pronouns:
+            pronoun_info = pronouns[word]
+            # البحث عن المرجع المناسب
+            for entity, entity_info in entities.items():
+                if "gender" in pronoun_info and "gender" in entity_info:
+                    if pronoun_info["gender"] == entity_info["gender"]:
+                        words[i] = entity
+                        break
+    
+    return " ".join(words)
+
+def fallback_to_openai(query, conversation_context):
+    """استخدام OpenAI كخطة بديلة إذا فشل GitHub API"""
+    try:
+        # استخدام OpenAI API
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        if not openai_api_key:
+            return "لم يتم تكوين مفتاح OpenAI API. يرجى تحديث ملف .env"
+        
+        # إنشاء بنية الطلب
+        messages = [
+            {
+                "role": "system",
+                "content": "أنت ذكاء نور الخارق. ساعد المستخدم بإجابات مختصرة ومفيدة. تذكر المحادثة السابقة وحافظ على سياق المحادثة."
+            }
+        ]
+        
+        # إضافة سياق المحادثة
+        for msg in conversation_context:
+            messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        
+        # إضافة سؤال المستخدم
+        messages.append({
+            "role": "user",
+            "content": query
+        })
+        
+        headers = {
+            'Authorization': f'Bearer {openai_api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        data = {
+            'model': 'gpt-3.5-turbo',
+            'messages': messages,
+            'temperature': 0.7,
+            'max_tokens': 800
+        }
+        
+        response = requests.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers=headers,
+            json=data
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result['choices'][0]['message']['content']
+        else:
+            print(f"خطأ في OpenAI API: {response.status_code} - {response.text}")
+            return "عذراً، لم أتمكن من الحصول على إجابة. يرجى المحاولة مرة أخرى لاحقًا."
+    
+    except Exception as e:
+        print(f"خطأ في OpenAI API: {str(e)}")
+        return f"عذراً، حدث خطأ: {str(e)}"
 
 @app.route('/')
 def index():
-    # إعادة تعيين سجل المحادثة عند بدء جلسة جديدة
-    global conversation_history
-    conversation_history = []
+    # إعادة تعيين الذاكرة عند بدء جلسة جديدة
+    conversation_memory.clear()
     return render_template('index.html')
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    try:
-        global conversation_history
-        data = request.json
-        user_message = data.get('message', '')
-        use_web_search = data.get('web_search', False)
-        
-        if not user_message:
-            return jsonify({'error': 'الرسالة فارغة'}), 400
-        
-        # إضافة رسالة المستخدم إلى سجل المحادثة
-        conversation_history.append({"role": "user", "content": user_message})
-        
-        # استجابة مؤقتة للاختبار
-        if use_web_search:
-            # الحصول على معلومات من الإنترنت أولاً
-            raw_info = use_gemini_with_web_search(user_message)
-            
-            # ثم تحليل المعلومات وإعادة صياغتها بشكل ذكي مع مراعاة سياق المحادثة
-            final_response = analyze_and_respond(user_message, raw_info, conversation_history)
-            
-            # إضافة رد النموذج إلى سجل المحادثة
-            conversation_history.append({"role": "assistant", "content": final_response})
-            
-            # الحفاظ على سجل محادثة محدود (آخر 10 رسائل فقط)
-            if len(conversation_history) > 20:
-                conversation_history = conversation_history[-20:]
-            
-            return jsonify({
-                'raw_info': raw_info,
-                'response': final_response
-            })
-        else:
-            response = process_message(user_message, conversation_history)
-            
-            # إضافة رد النموذج إلى سجل المحادثة
-            conversation_history.append({"role": "assistant", "content": response})
-            
-            # الحفاظ على سجل محادثة محدود (آخر 10 رسائل فقط)
-            if len(conversation_history) > 20:
-                conversation_history = conversation_history[-20:]
-                
-            return jsonify({'response': response})
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     
-    except Exception as e:
-        app.logger.error(f"Error in chat endpoint: {str(e)}")
-        return jsonify({'error': 'حدث خطأ في معالجة طلبك'}), 500
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            login_user(user)
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('dashboard'))
+        else:
+            flash('اسم المستخدم أو كلمة المرور غير صحيحة')
+    
+    return render_template('login.html')
 
-def process_message(user_message, conversation_history):
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if password != confirm_password:
+            flash('كلمات المرور غير متطابقة')
+            return render_template('register.html')
+        
+        existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
+        if existing_user:
+            flash('اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل')
+            return render_template('register.html')
+        
+        new_user = User(username=username, email=email)
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash('تم إنشاء الحساب بنجاح، يمكنك الآن تسجيل الدخول')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    conversations = Conversation.query.filter_by(user_id=current_user.id).order_by(Conversation.updated_at.desc()).all()
+    return render_template('dashboard.html', conversations=conversations)
+
+@app.route('/conversation/new', methods=['POST'])
+@login_required
+def new_conversation():
+    conversation = Conversation(user_id=current_user.id)
+    db.session.add(conversation)
+    db.session.commit()
+    return redirect(url_for('conversation', conversation_id=conversation.id))
+
+@app.route('/conversation/<int:conversation_id>')
+@login_required
+def conversation(conversation_id):
+    conversation = Conversation.query.get_or_404(conversation_id)
+    
+    # التحقق من أن المحادثة تنتمي للمستخدم الحالي
+    if conversation.user_id != current_user.id:
+        flash('غير مصرح لك بالوصول إلى هذه المحادثة')
+        return redirect(url_for('dashboard'))
+    
+    messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+    conversations = Conversation.query.filter_by(user_id=current_user.id).order_by(Conversation.updated_at.desc()).all()
+    
+    return render_template('conversation.html', conversation=conversation, messages=messages, conversations=conversations)
+
+def process_message(user_message, conversation_context):
+    """معالجة رسالة المستخدم وإنشاء استجابة ذكية"""
     # التحقق إذا كان السؤال عن هوية الروبوت
     if any(phrase in user_message.lower() for phrase in ['من أنت', 'من انت', 'عرف نفسك', 'عرفنا عليك', 'من هو', 'من هي']):
         return "أنا ذكاء نور الخارق، كيف يمكنني مساعدتك اليوم؟"
     
     # التحقق من طلبات التاريخ والوقت
     if any(keyword in user_message.lower() for keyword in ['تاريخ', 'اليوم', 'التاريخ', 'الوقت', 'الساعة']):
-        return handle_date_time_query(user_message, conversation_history)
+        return handle_date_time_query(user_message, conversation_context)
     
     # التحقق من وجود مفتاح GitHub
     if not github_token:
@@ -99,375 +541,362 @@ def process_message(user_message, conversation_history):
     # طباعة معلومات تصحيح الأخطاء
     print(f"استخدام المفتاح: {github_token[:5]}...{github_token[-5:] if len(github_token) > 10 else ''}")
     
-    # تجربة استخدام واجهة برمجة تطبيقات OpenAI
     try:
-        # إعداد الطلب إلى واجهة برمجة تطبيقات OpenAI
+        # تحليل سياق المحادثة لفهم أفضل للسؤال
+        enhanced_query = enhance_query_with_context(user_message, conversation_context)
+        print(f"السؤال المحسن: {enhanced_query}")
+        
+        # استخدام GitHub Copilot API
         headers = {
-            "Authorization": f"Bearer {github_token}",
-            "Content-Type": "application/json"
+            'Authorization': f'Bearer {github_token}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Github-Api-Version': '2022-11-28'
         }
         
-        # إعداد رسائل المحادثة مع سياق المحادثة
+        # إنشاء بنية الطلب
         messages = [
             {
                 "role": "system",
-                "content": "أنت ذكاء نور الخارق. ساعد المستخدم بإجابات مختصرة ومفيدة. لا تذكر أبدًا أنك من OpenAI أو أي شركة أخرى. تذكر المحادثة السابقة وحافظ على سياق المحادثة."
+                "content": "أنت ذكاء نور الخارق. ساعد المستخدم بإجابات مختصرة ومفيدة. تذكر المحادثة السابقة وحافظ على سياق المحادثة."
             }
         ]
         
-        # إضافة آخر 10 رسائل من سجل المحادثة (أو أقل إذا كان السجل أقصر)
-        for message in conversation_history[-10:]:
+        # إضافة سياق المحادثة
+        for msg in conversation_context:
             messages.append({
-                "role": message["role"],
-                "content": message["content"]
+                "role": msg["role"],
+                "content": msg["content"]
             })
         
-        # إعداد بيانات الطلب
-        payload = {
-            "model": "gpt-3.5-turbo",
-            "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 1000
+        # إضافة سؤال المستخدم المحسن
+        messages.append({
+            "role": "user",
+            "content": enhanced_query
+        })
+        
+        data = {
+            'model': 'gpt-4',
+            'messages': messages,
+            'temperature': 0.7,
+            'max_tokens': 800
         }
         
-        # نقطة النهاية المستخدمة
-        endpoint = "https://api.openai.com/v1/chat/completions"
-        print(f"استخدام نقطة النهاية: {endpoint}")
-        
-        # إرسال الطلب إلى واجهة برمجة التطبيقات
         response = requests.post(
-            endpoint,
+            'https://api.github.com/copilot/chat',
             headers=headers,
-            json=payload
+            json=data
         )
         
-        # التحقق من نجاح الطلب
-        response.raise_for_status()
-        
-        # استخراج الرد من النموذج
-        response_data = response.json()
-        ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        
-        if not ai_response:
-            return "لم يتم الحصول على رد من النموذج"
-        
-        return ai_response
-        
-    except requests.exceptions.RequestException as e:
-        # إذا فشلت واجهة برمجة تطبيقات OpenAI، نجرب واجهة برمجة تطبيقات GitHub AI
-        print(f"فشل طلب OpenAI: {str(e)}. جاري تجربة GitHub AI...")
-        
-        # إعداد الطلب إلى واجهة برمجة تطبيقات GitHub AI
-        headers = {
-            "Authorization": f"Bearer {github_token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-        
-        # إعداد رسائل المحادثة مع سياق المحادثة
-        messages = [
-            {
-                "role": "system",
-                "content": "أنت ذكاء نور الخارق. ساعد المستخدم بإجابات مختصرة ومفيدة. لا تذكر أبدًا أنك من OpenAI أو أي شركة أخرى. تذكر المحادثة السابقة وحافظ على سياق المحادثة."
-            }
-        ]
-        
-        # إضافة آخر 10 رسائل من سجل المحادثة (أو أقل إذا كان السجل أقصر)
-        for message in conversation_history[-10:]:
-            messages.append({
-                "role": message["role"],
-                "content": message["content"]
-            })
-        
-        # إعداد بيانات الطلب
-        payload = {
-            "model": "gpt-4o-mini",
-            "messages": messages,
-            "temperature": 1,
-            "max_tokens": 2048,
-            "top_p": 1
-        }
-        
-        # نقطة النهاية المستخدمة
-        endpoints = [
-            "https://models.github.ai/inference/chat/completions",  # الأصلية
-            "https://api.github.com/models/chat/completions",  # تجربة 1
-            "https://api.github.com/models/gpt-4o-mini/chat/completions"  # تجربة 2
-        ]
-        
-        # استخدام النقطة الأصلية
-        endpoint = endpoints[0]
-        print(f"استخدام نقطة النهاية: {endpoint}")
-        
-        # إرسال الطلب إلى واجهة برمجة التطبيقات
-        response = requests.post(
-            endpoint,
-            headers=headers,
-            json=payload
-        )
-        
-        # التحقق من نجاح الطلب
-        response.raise_for_status()
-        
-        # استخراج الرد من النموذج
-        response_data = response.json()
-        ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        
-        if not ai_response:
-            return "لم يتم الحصول على رد من النموذج"
-        
-        return ai_response
-
-def use_gemini_with_web_search(user_message):
-    """استخدام Google Gemini مع البحث على الإنترنت"""
-    try:
-        # التحقق من الأسئلة المتعلقة بالتاريخ والوقت
-        import datetime
-        import re
-        
-        # قائمة بالكلمات المفتاحية المتعلقة بالتاريخ والوقت
-        date_time_keywords = [
-            'تاريخ اليوم', 'اليوم كم', 'كم تاريخ', 'ما هو تاريخ', 'ما هو اليوم', 
-            'التاريخ الحالي', 'الوقت الآن', 'الساعة الآن', 'كم الساعة', 'ما هي الساعة'
-        ]
-        
-        # التحقق مما إذا كان السؤال يتعلق بالتاريخ أو الوقت
-        is_date_time_query = any(keyword in user_message for keyword in date_time_keywords)
-        
-        if is_date_time_query:
-            # الحصول على التاريخ والوقت الحاليين
-            now = datetime.datetime.now()
-            
-            # تنسيق التاريخ والوقت بالعربية
-            arabic_months = {
-                1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل", 5: "مايو", 6: "يونيو",
-                7: "يوليو", 8: "أغسطس", 9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر"
-            }
-            
-            arabic_weekdays = {
-                0: "الاثنين", 1: "الثلاثاء", 2: "الأربعاء", 
-                3: "الخميس", 4: "الجمعة", 5: "السبت", 6: "الأحد"
-            }
-            
-            # تنسيق التاريخ بالعربية
-            formatted_date = f"{now.day} {arabic_months[now.month]} {now.year}"
-            weekday = arabic_weekdays[now.weekday()]
-            
-            # تنسيق الوقت
-            formatted_time = now.strftime("%I:%M %p").replace("AM", "صباحاً").replace("PM", "مساءً")
-            
-            # إعداد الاستجابة بناءً على نوع السؤال
-            if any(keyword in user_message for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
-                return f"اليوم هو {weekday}، {formatted_date}."
-            elif any(keyword in user_message for keyword in ['الوقت', 'الساعة']):
-                return f"الوقت الآن هو {formatted_time}."
-            else:
-                return f"اليوم هو {weekday}، {formatted_date}، والوقت الآن هو {formatted_time}."
-        
-        # إنشاء نموذج Gemini مع تمكين البحث على الإنترنت
-        generation_config = {
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "top_k": 64,
-            "max_output_tokens": 2048,
-        }
-        
-        safety_settings = [
-            {
-                "category": "HARM_CATEGORY_HARASSMENT",
-                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-                "category": "HARM_CATEGORY_HATE_SPEECH",
-                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-            }
-        ]
-        
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            generation_config=generation_config,
-            safety_settings=safety_settings
-        )
-        
-        # تحسين الطلب للبحث عبر الإنترنت
-        prompt = f"""
-        قم بالبحث الشامل والمتعمق عن: {user_message}
-        
-        المطلوب:
-        1. ابحث عن معلومات دقيقة وحديثة من مصادر موثوقة.
-        2. قدم المعلومات بشكل منظم ومفصل.
-        3. اذكر المصادر التي استخدمتها في البحث.
-        4. تأكد من تقديم معلومات شاملة تغطي جميع جوانب الموضوع.
-        5. قدم المعلومات بصيغة نصية واضحة.
-        
-        ملاحظة: هذه المعلومات الخام ستستخدم لاحقاً لتحليلها وإعادة صياغتها.
-        """
-        
-        response = model.generate_content(prompt)
-        
-        # التحقق من وجود محتوى في الاستجابة
-        if not response.text:
-            return "لم يتم العثور على معلومات. يرجى إعادة صياغة طلبك."
-        
-        # تنظيف وتنسيق النص
-        raw_info = response.text.strip()
-        
-        return raw_info
-        
-    except Exception as e:
-        print(f"خطأ في استخدام Gemini مع البحث على الإنترنت: {str(e)}")
-        return f"حدث خطأ أثناء البحث: {str(e)}"
-
-def analyze_and_respond(user_question, raw_info, conversation_history):
-    """تحليل المعلومات الخام وإعادة صياغتها بشكل ذكي"""
-    try:
-        # إنشاء نموذج Gemini لتحليل المعلومات
-        generation_config = {
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "top_k": 64,
-            "max_output_tokens": 2048,
-        }
-        
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            generation_config=generation_config
-        )
-        
-        # تحسين الطلب لتحليل المعلومات
-        prompt = f"""
-        قم بتحليل المعلومات التالية وإعادة صياغتها بشكل ذكي لتقديم إجابة على سؤال المستخدم.
-        
-        سؤال المستخدم: {user_question}
-        
-        المعلومات الخام:
-        {raw_info}
-        
-        المطلوب:
-        1. قم بتحليل المعلومات وتلخيصها بشكل ذكي.
-        2. قدم إجابة مباشرة ومفيدة على سؤال المستخدم.
-        3. استخدم لغة واضحة وسهلة الفهم.
-        4. نظم المعلومات بشكل منطقي.
-        5. تجنب تكرار المعلومات.
-        6. تأكد من أن الإجابة شاملة وتغطي جميع جوانب السؤال.
-        7. حافظ على سياق المحادثة واربط إجابتك بالمحادثة السابقة إذا كان ذلك مناسبًا.
-        
-        ملاحظة: قدم إجابة شاملة ولكن مختصرة، مع التركيز على النقاط الأكثر أهمية.
-        
-        سياق المحادثة السابقة:
-        """
-        
-        # إضافة آخر 5 رسائل من سجل المحادثة إلى الطلب (إذا وجدت)
-        if len(conversation_history) > 1:  # تجاهل الرسالة الحالية
-            prompt += "\nفيما يلي سجل المحادثة السابقة (أحدث 5 رسائل):\n"
-            for i, message in enumerate(conversation_history[-6:-1]):  # آخر 5 رسائل باستثناء الرسالة الحالية
-                role = "المستخدم" if message["role"] == "user" else "نور"
-                prompt += f"{i+1}. {role}: {message['content']}\n"
-        
-        response = model.generate_content(prompt)
-        
-        # التحقق من وجود محتوى في الاستجابة
-        if not response.text:
-            return "عذراً، لم أتمكن من تحليل المعلومات. يرجى إعادة صياغة سؤالك."
-        
-        # تنظيف وتنسيق النص
-        final_response = response.text.strip()
-        
-        return final_response
-        
-    except Exception as e:
-        print(f"خطأ في تحليل المعلومات: {str(e)}")
-        return f"حدث خطأ أثناء تحليل المعلومات: {str(e)}"
-
-def handle_date_time_query(user_message, conversation_history):
-    """معالجة استفسارات التاريخ والوقت مع دعم التاريخ الهجري"""
-    try:
-        from datetime import datetime
-        import pytz
-        from hijri_converter import Gregorian, Hijri
-        
-        # الحصول على التاريخ والوقت الحاليين
-        timezone = pytz.timezone('Asia/Riyadh')  # استخدام توقيت السعودية كمثال
-        now = datetime.now(timezone)
-        
-        # تحديد الأشهر العربية
-        arabic_months = {
-            1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل", 5: "مايو", 6: "يونيو",
-            7: "يوليو", 8: "أغسطس", 9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر"
-        }
-        
-        arabic_weekdays = {
-            0: "الاثنين", 1: "الثلاثاء", 2: "الأربعاء", 
-            3: "الخميس", 4: "الجمعة", 5: "السبت", 6: "الأحد"
-        }
-        
-        # تنسيق التاريخ بالعربية
-        formatted_date = f"{now.day} {arabic_months[now.month]} {now.year}"
-        weekday = arabic_weekdays[now.weekday()]
-        
-        # تنسيق الوقت
-        formatted_time = now.strftime("%I:%M %p").replace("AM", "صباحاً").replace("PM", "مساءً")
-        
-        # تحويل التاريخ الميلادي إلى هجري
-        hijri_date = Gregorian(now.year, now.month, now.day).to_hijri()
-        
-        # أسماء الأشهر الهجرية
-        hijri_months = {
-            1: "محرم", 2: "صفر", 3: "ربيع الأول", 4: "ربيع الثاني", 
-            5: "جمادى الأولى", 6: "جمادى الآخرة", 7: "رجب", 8: "شعبان",
-            9: "رمضان", 10: "شوال", 11: "ذو القعدة", 12: "ذو الحجة"
-        }
-        
-        # تنسيق التاريخ الهجري
-        formatted_hijri_date = f"{hijri_date.day} {hijri_months[hijri_date.month]} {hijri_date.year}"
-        
-        # التحقق من طلب التاريخ الهجري
-        is_hijri_request = False
-        
-        # فحص الرسالة الحالية
-        if any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
-            is_hijri_request = True
-        
-        # فحص سياق المحادثة السابقة إذا كانت الرسالة الحالية قصيرة
-        if len(user_message.split()) <= 2 and not is_hijri_request:
-            # البحث في آخر رسالتين من المحادثة
-            for i in range(min(4, len(conversation_history))):
-                if i > 0 and conversation_history[-i]["role"] == "user":
-                    prev_msg = conversation_history[-i]["content"].lower()
-                    if any(keyword in prev_msg for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
-                        if any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
-                            is_hijri_request = True
-                            break
-        
-        # إعداد الاستجابة بناءً على نوع السؤال
-        if is_hijri_request:
-            return f"التاريخ الهجري اليوم هو {formatted_hijri_date}."
-        elif any(keyword in user_message for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
-            if any(keyword in user_message for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
-                return f"التاريخ الهجري اليوم هو {formatted_hijri_date}."
-            else:
-                return f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}."
-        elif any(keyword in user_message for keyword in ['الوقت', 'الساعة']):
-            return f"الوقت الآن هو {formatted_time}."
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('choices', [{}])[0].get('message', {}).get('content', 'لا توجد إجابة')
         else:
-            return f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}، والوقت الآن هو {formatted_time}."
+            print(f"خطأ في GitHub API: {response.status_code} - {response.text}")
+            # استخدام OpenAI كخطة بديلة
+            return fallback_to_openai(enhanced_query, conversation_context)
     
     except Exception as e:
-        print(f"خطأ في معالجة استفسار التاريخ والوقت: {str(e)}")
-        return "عذراً، حدث خطأ أثناء معالجة استفسار التاريخ والوقت."
+        print(f"خطأ: {str(e)}")
+        return f"عذراً، حدث خطأ: {str(e)}"
+
+def extract_entities(text):
+    """استخراج الكيانات من النص (مثل الأشخاص، الأماكن، التواريخ)"""
+    entities = []
+    
+    # قائمة بالكيانات المعروفة للاختبار
+    known_locations = ["الرياض", "جدة", "مكة", "المدينة", "الدمام", "الخبر", "أبها", "تبوك", "حائل", "نجران", 
+                      "السعودية", "مصر", "الإمارات", "قطر", "الكويت", "البحرين", "عمان", "الأردن", "لبنان"]
+    
+    known_persons = ["محمد", "أحمد", "علي", "عمر", "خالد", "عبدالله", "سلمان", "فهد", "سعود", "فيصل", 
+                    "نورة", "سارة", "فاطمة", "عائشة", "منى", "هند", "ريم", "لينا"]
+    
+    known_organizations = ["وزارة", "شركة", "مؤسسة", "هيئة", "جامعة", "مدرسة", "مستشفى", "مركز", "معهد"]
+    
+    # البحث عن الكيانات في النص
+    words = text.split()
+    for word in words:
+        # تنظيف الكلمة من علامات الترقيم
+        clean_word = word.strip(".,!?؟،:")
+        
+        # التحقق من الأماكن
+        for location in known_locations:
+            if location in clean_word:
+                entities.append({"type": "location", "value": location})
+        
+        # التحقق من الأشخاص
+        for person in known_persons:
+            if person in clean_word:
+                entities.append({"type": "person", "value": person})
+        
+        # التحقق من المنظمات
+        for org in known_organizations:
+            if org in clean_word:
+                entities.append({"type": "organization", "value": clean_word})
+    
+    # البحث عن التواريخ (تنفيذ بسيط)
+    date_indicators = ["يوم", "شهر", "سنة", "تاريخ", "الأسبوع", "الماضي", "القادم", "الحالي"]
+    for i, word in enumerate(words):
+        if any(indicator in word for indicator in date_indicators):
+            date_entity = " ".join(words[max(0, i-1):min(len(words), i+3)])
+            entities.append({"type": "date", "value": date_entity})
+    
+    # إزالة التكرارات
+    unique_entities = []
+    seen = set()
+    for entity in entities:
+        key = f"{entity['type']}:{entity['value']}"
+        if key not in seen:
+            seen.add(key)
+            unique_entities.append(entity)
+    
+    return unique_entities
+
+def extract_topics(text):
+    """استخراج المواضيع من النص"""
+    topics = []
+    
+    # قائمة بالمواضيع المعروفة وكلماتها المفتاحية
+    topic_keywords = {
+        "تاريخ": ["تاريخ", "هجري", "ميلادي", "سنة", "شهر", "يوم"],
+        "وقت": ["وقت", "ساعة", "دقيقة", "صباح", "مساء"],
+        "طقس": ["طقس", "حرارة", "درجة", "مطر", "رياح", "جو"],
+        "رياضة": ["كرة", "مباراة", "فريق", "لاعب", "بطولة", "دوري"],
+        "تقنية": ["حاسوب", "هاتف", "تطبيق", "برنامج", "إنترنت", "تقنية", "ذكاء اصطناعي"],
+        "صحة": ["صحة", "مرض", "علاج", "دواء", "طبيب"],
+        "تعليم": ["تعليم", "مدرسة", "جامعة", "طالب", "معلم", "دراسة", "امتحان"],
+        "اقتصاد": ["اقتصاد", "مال", "سوق", "شركة", "استثمار", "سهم", "عملة"],
+        "سفر": ["سفر", "سياحة", "فندق", "رحلة", "مطار", "تذكرة", "وجهة"],
+        "طعام": ["طعام", "أكل", "وصفة", "مطعم", "طبخ", "مكونات"]
+    }
+    
+    # البحث عن المواضيع في النص
+    for topic, keywords in topic_keywords.items():
+        for keyword in keywords:
+            if keyword in text.lower():
+                topics.append(topic)
+                break
+    
+    return topics
+
+def handle_date_time_query(user_message, conversation_context):
+    """معالجة استعلامات التاريخ والوقت"""
+    from datetime import datetime
+    import pytz
+    from hijri_converter import Gregorian
+    
+    # تحديد المنطقة الزمنية للمملكة العربية السعودية
+    saudi_tz = pytz.timezone('Asia/Riyadh')
+    now = datetime.now(saudi_tz)
+    
+    # تحويل التاريخ الميلادي إلى هجري
+    hijri_date = Gregorian(now.year, now.month, now.day).to_hijri()
+    
+    # تنسيق التاريخ والوقت
+    gregorian_date_str = now.strftime("%Y-%m-%d")
+    hijri_date_str = f"{hijri_date.year}-{hijri_date.month}-{hijri_date.day}"
+    time_str = now.strftime("%H:%M:%S")
+    
+    # تحديد نوع الاستعلام
+    if any(keyword in user_message.lower() for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
+        if 'هجري' in user_message.lower():
+            return f"التاريخ الهجري اليوم هو: {hijri_date_str}"
+        elif 'ميلادي' in user_message.lower():
+            return f"التاريخ الميلادي اليوم هو: {gregorian_date_str}"
+        else:
+            return f"اليوم هو: {gregorian_date_str} ميلادي، الموافق {hijri_date_str} هجري"
+    
+    elif any(keyword in user_message.lower() for keyword in ['الوقت', 'الساعة']):
+        return f"الوقت الآن هو: {time_str}"
+    
+    else:
+        return f"اليوم هو: {gregorian_date_str} ميلادي، الموافق {hijri_date_str} هجري\nالوقت الآن هو: {time_str}"
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    try:
+        # الحصول على بيانات الطلب
+        data = request.get_json()
+        user_message = data.get('message', '')
+        
+        # التحقق من وجود رسالة
+        if not user_message:
+            return jsonify({'error': 'الرسالة مطلوبة'}), 400
+        
+        # الحصول على سجل المحادثة من الجلسة أو إنشاء سجل جديد
+        conversation_history = session.get('conversation_history', [])
+        
+        # إضافة رسالة المستخدم إلى سجل المحادثة
+        conversation_history.append({
+            "role": "user",
+            "content": user_message
+        })
+        
+        # تحديث ذاكرة المحادثة
+        conversation_memory.add_message("user", user_message)
+        
+        # استخراج الكيانات والمواضيع من رسالة المستخدم
+        entities = extract_entities(user_message)
+        topics = extract_topics(user_message)
+        
+        # تحديث الكيانات والمواضيع في ذاكرة المحادثة
+        for entity in entities:
+            conversation_memory.add_entity(entity)
+        
+        for topic in topics:
+            conversation_memory.add_topic(topic)
+        
+        # الحصول على استجابة من نموذج الذكاء الاصطناعي
+        ai_response = process_message(user_message, conversation_history)
+        
+        # إضافة استجابة النموذج إلى سجل المحادثة
+        conversation_history.append({
+            "role": "assistant",
+            "content": ai_response
+        })
+        
+        # تحديث ذاكرة المحادثة بالاستجابة
+        conversation_memory.add_message("assistant", ai_response)
+        
+        # تحديث سجل المحادثة في الجلسة
+        session['conversation_history'] = conversation_history
+        
+        # إرجاع الاستجابة
+        return jsonify({
+            'response': ai_response,
+            'context': {
+                'active_topics': conversation_memory.get_active_topics(),
+                'recent_entities': conversation_memory.get_recent_entities(5)
+            }
+        })
+    
+    except Exception as e:
+        app.logger.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({'error': 'حدث خطأ في معالجة طلبك'}), 500
+
+@app.route('/api/conversation/<int:conversation_id>/messages', methods=['POST'])
+@login_required
+def add_message_to_conversation(conversation_id):
+    conversation = Conversation.query.get_or_404(conversation_id)
+    
+    # التحقق من أن المحادثة تنتمي للمستخدم الحالي
+    if conversation.user_id != current_user.id:
+        return jsonify({'error': 'غير مصرح لك بالوصول إلى هذه المحادثة'}), 403
+    
+    data = request.get_json()
+    user_message = data.get('message', '')
+    
+    if not user_message:
+        return jsonify({'error': 'الرسالة مطلوبة'}), 400
+    
+    # إنشاء رسالة جديدة من المستخدم
+    user_msg = Message(content=user_message, role='user', conversation_id=conversation_id)
+    db.session.add(user_msg)
+    
+    # تحديث وقت آخر تعديل للمحادثة
+    conversation.updated_at = datetime.utcnow()
+    
+    # الحصول على جميع رسائل المحادثة لبناء السياق
+    conversation_history = []
+    messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+    
+    for msg in messages:
+        conversation_history.append({
+            "role": msg.role,
+            "content": msg.content
+        })
+    
+    # إضافة رسالة المستخدم الحالية إلى السياق
+    conversation_history.append({
+        "role": "user",
+        "content": user_message
+    })
+    
+    # الحصول على استجابة من نموذج الذكاء الاصطناعي
+    ai_response = process_message(user_message, conversation_history)
+    
+    # إنشاء رسالة جديدة من المساعد
+    assistant_msg = Message(content=ai_response, role='assistant', conversation_id=conversation_id)
+    db.session.add(assistant_msg)
+    
+    # تحديث عنوان المحادثة إذا كانت المحادثة جديدة (أول رسالة)
+    if len(messages) == 0:
+        # استخدام أول 30 حرف من رسالة المستخدم كعنوان للمحادثة
+        title = user_message[:30] + ('...' if len(user_message) > 30 else '')
+        conversation.title = title
+    
+    db.session.commit()
+    
+    return jsonify({
+        'user_message': user_msg.to_dict(),
+        'assistant_message': assistant_msg.to_dict()
+    })
+
+@app.route('/api/conversation/<int:conversation_id>/messages', methods=['GET'])
+@login_required
+def get_conversation_messages(conversation_id):
+    conversation = Conversation.query.get_or_404(conversation_id)
+    
+    # التحقق من أن المحادثة تنتمي للمستخدم الحالي
+    if conversation.user_id != current_user.id:
+        return jsonify({'error': 'غير مصرح لك بالوصول إلى هذه المحادثة'}), 403
+    
+    messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+    return jsonify([msg.to_dict() for msg in messages])
+
+@app.route('/api/conversations', methods=['GET'])
+@login_required
+def get_user_conversations():
+    conversations = Conversation.query.filter_by(user_id=current_user.id).order_by(Conversation.updated_at.desc()).all()
+    return jsonify([{
+        'id': conv.id,
+        'title': conv.title,
+        'created_at': conv.created_at.isoformat(),
+        'updated_at': conv.updated_at.isoformat()
+    } for conv in conversations])
+
+@app.route('/api/conversation/<int:conversation_id>', methods=['DELETE'])
+@login_required
+def delete_conversation(conversation_id):
+    conversation = Conversation.query.get_or_404(conversation_id)
+    
+    # التحقق من أن المحادثة تنتمي للمستخدم الحالي
+    if conversation.user_id != current_user.id:
+        return jsonify({'error': 'غير مصرح لك بالوصول إلى هذه المحادثة'}), 403
+    
+    db.session.delete(conversation)
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+@app.route('/api/conversation/<int:conversation_id>/title', methods=['PUT'])
+@login_required
+def update_conversation_title(conversation_id):
+    conversation = Conversation.query.get_or_404(conversation_id)
+    
+    # التحقق من أن المحادثة تنتمي للمستخدم الحالي
+    if conversation.user_id != current_user.id:
+        return jsonify({'error': 'غير مصرح لك بالوصول إلى هذه المحادثة'}), 403
+    
+    data = request.get_json()
+    new_title = data.get('title', '')
+    
+    if not new_title:
+        return jsonify({'error': 'العنوان مطلوب'}), 400
+    
+    conversation.title = new_title
+    db.session.commit()
+    
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
+    # إنشاء قاعدة البيانات إذا لم تكن موجودة
+    with app.app_context():
+        db.create_all()
+        
     parser = argparse.ArgumentParser(description='تشغيل تطبيق نور')
     parser.add_argument('--port', type=int, default=5010, help='رقم المنفذ للتشغيل')
+    parser.add_argument('--debug', action='store_true', help='تشغيل في وضع التصحيح')
     args = parser.parse_args()
     
-    print(f"تم تشغيل نور (Noor) على الرابط: http://127.0.0.1:{args.port}")
-    app.run(host='0.0.0.0', port=args.port)
+    app.run(debug=args.debug, port=args.port)

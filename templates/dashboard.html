@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - نور</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+        .sidebar {
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            background-color: white;
+            border-left: 1px solid #dee2e6;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .main-content {
+            margin-right: 280px;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .conversation-item {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .conversation-item:hover {
+            background-color: #f0f0f0;
+        }
+        .conversation-item.active {
+            background-color: #e9ecef;
+        }
+        .new-chat-btn {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .user-info {
+            padding: 15px 0;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 20px;
+        }
+        .welcome-box {
+            text-align: center;
+            max-width: 600px;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        .welcome-box h1 {
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- الشريط الجانبي -->
+    <div class="sidebar">
+        <div class="user-info">
+            <h5>مرحباً، {{ current_user.username }}</h5>
+            <small class="text-muted">{{ current_user.email }}</small>
+        </div>
+        
+        <form action="{{ url_for('new_conversation') }}" method="POST">
+            <button type="submit" class="btn btn-primary new-chat-btn">
+                <i class="bi bi-plus-lg"></i> محادثة جديدة
+            </button>
+        </form>
+        
+        <h6 class="mb-3">المحادثات</h6>
+        
+        <div class="conversation-list">
+            {% for conversation in conversations %}
+                <div class="conversation-item" onclick="window.location.href='{{ url_for('conversation', conversation_id=conversation.id) }}'">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="conversation-title">{{ conversation.title }}</div>
+                        <small class="text-muted">{{ conversation.updated_at.strftime('%Y-%m-%d') }}</small>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-muted">لا توجد محادثات بعد.</p>
+            {% endfor %}
+        </div>
+        
+        <div class="mt-auto pt-3 border-top">
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger w-100">
+                <i class="bi bi-box-arrow-left"></i> تسجيل الخروج
+            </a>
+        </div>
+    </div>
+    
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content">
+        <div class="welcome-box">
+            <h1>مرحباً بك في نور</h1>
+            <p class="lead">المساعد الذكي الذي يفهم احتياجاتك ويساعدك في الإجابة على أسئلتك.</p>
+            <p>ابدأ محادثة جديدة الآن واستمتع بتجربة المحادثة الذكية!</p>
+            <form action="{{ url_for('new_conversation') }}" method="POST">
+                <button type="submit" class="btn btn-lg btn-primary mt-3">
+                    <i class="bi bi-chat-dots"></i> بدء محادثة جديدة
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
