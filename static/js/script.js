@@ -183,6 +183,53 @@ document.addEventListener('DOMContentLoaded', function() {
             // إخفاء مؤشر التفكير
             liveSearchIndicator.classList.remove('active');
             
+            // إذا كان هناك عملية تفكير، عرضها أولاً
+            if (data.thinking_process && data.thinking_process.trim() !== '') {
+                const thinkingMessage = document.createElement('div');
+                thinkingMessage.className = 'message system thinking-process';
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+                
+                // تنسيق عملية التفكير
+                const formattedThinking = data.thinking_process
+                    .split('\n')
+                    .map(line => {
+                        if (line.startsWith('-')) {
+                            return `<span class="thinking-step">${line}</span>`;
+                        } else if (line.startsWith('*')) {
+                            return `<span class="thinking-substep">${line}</span>`;
+                        }
+                        return line;
+                    })
+                    .join('<br>');
+                
+                messageContent.innerHTML = `
+                    <div class="thinking-header">
+                        <i class="fas fa-brain"></i> عملية التفكير
+                        <button class="btn btn-sm btn-outline-secondary toggle-thinking">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="thinking-details">
+                        ${formattedThinking}
+                    </div>
+                `;
+                
+                thinkingMessage.appendChild(messageContent);
+                chatContainer.appendChild(thinkingMessage);
+                
+                // إضافة مستمع حدث لزر التبديل
+                const toggleButton = thinkingMessage.querySelector('.toggle-thinking');
+                const thinkingDetails = thinkingMessage.querySelector('.thinking-details');
+                
+                toggleButton.addEventListener('click', () => {
+                    thinkingDetails.classList.toggle('collapsed');
+                    toggleButton.querySelector('i').classList.toggle('fa-chevron-down');
+                    toggleButton.querySelector('i').classList.toggle('fa-chevron-up');
+                });
+            }
+            
             // إذا كانت هناك معلومات خام من البحث، أضفها أولاً
             if (data.raw_info && data.raw_info.trim() !== '') {
                 addRawInfoToChat(data.raw_info);

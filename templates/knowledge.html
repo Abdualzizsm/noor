@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة قاعدة المعرفة - {{ app_name }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .knowledge-container {
+            padding: 20px;
+        }
+        .concept-card {
+            margin-bottom: 15px;
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+        .concept-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .relation-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background-color: rgba(var(--accent-rgb), 0.05);
+        }
+        .relation-strength {
+            width: 100%;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
+        .category-badge {
+            font-size: 0.8em;
+            padding: 5px 10px;
+            margin-right: 10px;
+            border-radius: 20px;
+        }
+        .concept-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .graph-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="light-theme">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- الشريط الجانبي -->
+            <div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="sidebar-content">
+                    <div class="sidebar-header">
+                        <h3>{{ app_name }}</h3>
+                        <p>إدارة قاعدة المعرفة</p>
+                    </div>
+                    <div class="sidebar-menu">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link" href="/">
+                                    <i class="fas fa-comment-dots"></i> المحادثة
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/knowledge">
+                                    <i class="fas fa-brain"></i> قاعدة المعرفة
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="sidebar-footer">
+                        <button id="theme-toggle" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-moon"></i> الوضع الداكن
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- المحتوى الرئيسي -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="knowledge-container">
+                    <h1 class="mb-4">إدارة قاعدة المعرفة</h1>
+                    
+                    <!-- شريط التنقل بين الأقسام -->
+                    <ul class="nav nav-tabs" id="knowledgeTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="concepts-tab" data-bs-toggle="tab" data-bs-target="#concepts" type="button" role="tab" aria-controls="concepts" aria-selected="true">
+                                <i class="fas fa-lightbulb"></i> المفاهيم
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="relations-tab" data-bs-toggle="tab" data-bs-target="#relations" type="button" role="tab" aria-controls="relations" aria-selected="false">
+                                <i class="fas fa-project-diagram"></i> العلاقات
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="visualization-tab" data-bs-toggle="tab" data-bs-target="#visualization" type="button" role="tab" aria-controls="visualization" aria-selected="false">
+                                <i class="fas fa-chart-network"></i> التصور البياني
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="import-export-tab" data-bs-toggle="tab" data-bs-target="#import-export" type="button" role="tab" aria-controls="import-export" aria-selected="false">
+                                <i class="fas fa-exchange-alt"></i> استيراد/تصدير
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- محتوى الأقسام -->
+                    <div class="tab-content" id="knowledgeTabsContent">
+                        <!-- قسم المفاهيم -->
+                        <div class="tab-pane fade show active" id="concepts" role="tabpanel" aria-labelledby="concepts-tab">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h3>المفاهيم</h3>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConceptModal">
+                                    <i class="fas fa-plus"></i> إضافة مفهوم جديد
+                                </button>
+                            </div>
+                            
+                            <!-- فلتر البحث والفئات -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="input-group">
+                                        <input type="text" id="concept-search" class="form-control" placeholder="بحث في المفاهيم...">
+                                        <button class="btn btn-outline-secondary" type="button">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <select id="category-filter" class="form-select">
+                                        <option value="">جميع الفئات</option>
+                                        <!-- سيتم ملء هذه القائمة ديناميكيًا -->
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- قائمة المفاهيم -->
+                            <div class="row" id="concepts-list">
+                                <!-- سيتم ملء هذه القائمة ديناميكيًا -->
+                            </div>
+                        </div>
+                        
+                        <!-- قسم العلاقات -->
+                        <div class="tab-pane fade" id="relations" role="tabpanel" aria-labelledby="relations-tab">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h3>العلاقات</h3>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRelationModal">
+                                    <i class="fas fa-plus"></i> إضافة علاقة جديدة
+                                </button>
+                            </div>
+                            
+                            <!-- قائمة العلاقات -->
+                            <div id="relations-list">
+                                <!-- سيتم ملء هذه القائمة ديناميكيًا -->
+                            </div>
+                        </div>
+                        
+                        <!-- قسم التصور البياني -->
+                        <div class="tab-pane fade" id="visualization" role="tabpanel" aria-labelledby="visualization-tab">
+                            <h3 class="mb-4">التصور البياني لقاعدة المعرفة</h3>
+                            <div class="graph-container" id="knowledge-graph">
+                                <!-- سيتم عرض الرسم البياني هنا -->
+                            </div>
+                        </div>
+                        
+                        <!-- قسم الاستيراد/التصدير -->
+                        <div class="tab-pane fade" id="import-export" role="tabpanel" aria-labelledby="import-export-tab">
+                            <h3 class="mb-4">استيراد وتصدير قاعدة المعرفة</h3>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5>تصدير قاعدة المعرفة</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>تصدير قاعدة المعرفة الحالية إلى ملف JSON.</p>
+                                    <button id="export-btn" class="btn btn-primary">
+                                        <i class="fas fa-download"></i> تصدير
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>استيراد قاعدة المعرفة</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>استيراد قاعدة معرفة من ملف JSON. <strong>تحذير:</strong> سيؤدي هذا إلى استبدال قاعدة المعرفة الحالية.</p>
+                                    <div class="mb-3">
+                                        <textarea id="import-data" class="form-control" rows="10" placeholder="الصق بيانات JSON هنا..."></textarea>
+                                    </div>
+                                    <button id="import-btn" class="btn btn-warning">
+                                        <i class="fas fa-upload"></i> استيراد
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- نافذة إضافة مفهوم جديد -->
+    <div class="modal fade" id="addConceptModal" tabindex="-1" aria-labelledby="addConceptModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addConceptModalLabel">إضافة مفهوم جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-concept-form">
+                        <div class="mb-3">
+                            <label for="concept-name" class="form-label">اسم المفهوم</label>
+                            <input type="text" class="form-control" id="concept-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="concept-description" class="form-label">وصف المفهوم</label>
+                            <textarea class="form-control" id="concept-description" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="concept-category" class="form-label">الفئة</label>
+                            <input type="text" class="form-control" id="concept-category" list="categories-list" required>
+                            <datalist id="categories-list">
+                                <!-- سيتم ملء هذه القائمة ديناميكيًا -->
+                            </datalist>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" id="save-concept-btn">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- نافذة تعديل مفهوم -->
+    <div class="modal fade" id="editConceptModal" tabindex="-1" aria-labelledby="editConceptModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editConceptModalLabel">تعديل مفهوم</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-concept-form">
+                        <input type="hidden" id="edit-concept-id">
+                        <div class="mb-3">
+                            <label for="edit-concept-name" class="form-label">اسم المفهوم</label>
+                            <input type="text" class="form-control" id="edit-concept-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-concept-description" class="form-label">وصف المفهوم</label>
+                            <textarea class="form-control" id="edit-concept-description" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-concept-category" class="form-label">الفئة</label>
+                            <input type="text" class="form-control" id="edit-concept-category" list="edit-categories-list" required>
+                            <datalist id="edit-categories-list">
+                                <!-- سيتم ملء هذه القائمة ديناميكيًا -->
+                            </datalist>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" id="update-concept-btn">تحديث</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- نافذة إضافة علاقة جديدة -->
+    <div class="modal fade" id="addRelationModal" tabindex="-1" aria-labelledby="addRelationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addRelationModalLabel">إضافة علاقة جديدة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-relation-form">
+                        <div class="mb-3">
+                            <label for="relation-source" class="form-label">المفهوم المصدر</label>
+                            <select class="form-select" id="relation-source" required>
+                                <option value="">اختر المفهوم المصدر...</option>
+                                <!-- سيتم ملء هذه القائمة ديناميكيًا -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="relation-type" class="form-label">نوع العلاقة</label>
+                            <input type="text" class="form-control" id="relation-type" list="relation-types-list" required>
+                            <datalist id="relation-types-list">
+                                <option value="يشمل">
+                                <option value="جزء من">
+                                <option value="يستخدم">
+                                <option value="يدعم">
+                                <option value="يؤثر على">
+                                <option value="يثير قضايا">
+                                <option value="قد يسبب">
+                                <option value="يمكّن">
+                                <option value="يهدد">
+                                <option value="مرتبط بـ">
+                            </datalist>
+                        </div>
+                        <div class="mb-3">
+                            <label for="relation-target" class="form-label">المفهوم الهدف</label>
+                            <select class="form-select" id="relation-target" required>
+                                <option value="">اختر المفهوم الهدف...</option>
+                                <!-- سيتم ملء هذه القائمة ديناميكيًا -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="relation-strength" class="form-label">قوة العلاقة: <span id="strength-value">0.5</span></label>
+                            <input type="range" class="form-range" id="relation-strength" min="0.1" max="1.0" step="0.1" value="0.5">
+                        </div>
+                        <div class="mb-3">
+                            <label for="relation-description" class="form-label">وصف العلاقة (اختياري)</label>
+                            <textarea class="form-control" id="relation-description" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="relation-bidirectional">
+                            <label class="form-check-label" for="relation-bidirectional">علاقة ثنائية الاتجاه</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" id="save-relation-btn">حفظ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- سكريبت D3.js للتصور البياني -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- سكريبت Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- سكريبت إدارة قاعدة المعرفة -->
+    <script src="{{ url_for('static', filename='js/knowledge.js') }}"></script>
+</body>
+</html>

@@ -53,6 +53,22 @@
     
     --border-radius: 8px;  /* نصف قطر الحواف */
     --transition-speed: 0.3s;  /* سرعة التأثيرات الانتقالية */
+    
+    --accent-rgb: 64, 196, 255;
+    --accent-color: rgb(var(--accent-rgb));
+    --bg-secondary: rgba(var(--accent-rgb), 0.05);
+    --text-accent: var(--accent-color);
+    --text-secondary: #888;
+}
+
+.dark-theme {
+    --bg-secondary: rgba(255, 255, 255, 0.05);
+    --text-secondary: #aaa;
+}
+
+.light-theme {
+    --bg-secondary: rgba(0, 0, 0, 0.05);
+    --text-secondary: #666;
 }
 
 /* تنسيقات عامة */
@@ -749,4 +765,293 @@ body.light-theme {
     background-color: rgba(0, 0, 0, 0.05);
     border-color: var(--light-text);
     color: var(--light-text);
+}
+
+/* تنسيقات عملية التفكير */
+.thinking-process {
+    background-color: var(--bg-secondary);
+    border-radius: 10px;
+    margin: 10px 0;
+    padding: 15px;
+}
+
+.thinking-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: var(--text-accent);
+}
+
+.thinking-header i {
+    margin-left: 8px;
+    color: var(--accent-color);
+}
+
+.thinking-details {
+    max-height: 500px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease-in-out;
+}
+
+.thinking-details.collapsed {
+    max-height: 0;
+    overflow: hidden;
+}
+
+.thinking-step {
+    display: block;
+    margin: 8px 0;
+    padding: 8px;
+    background-color: rgba(var(--accent-rgb), 0.1);
+    border-right: 3px solid var(--accent-color);
+    border-radius: 4px;
+}
+
+.thinking-substep {
+    display: block;
+    margin: 4px 20px;
+    padding: 4px 8px;
+    color: var(--text-secondary);
+    border-right: 2px solid var(--text-secondary);
+}
+
+.toggle-thinking {
+    padding: 2px 8px;
+    font-size: 0.8em;
+}
+
+.toggle-thinking i {
+    margin: 0;
+    transition: transform 0.3s ease;
+}
+
+.toggle-thinking i.fa-chevron-up {
+    transform: rotate(180deg);
+}
+
+/* تنسيقات صفحة إدارة قاعدة المعرفة */
+.knowledge-container {
+    padding: 20px;
+    background-color: var(--light-container);
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px var(--light-shadow);
+    margin-bottom: 30px;
+}
+
+.dark-theme .knowledge-container {
+    background-color: var(--dark-container);
+    box-shadow: 0 2px 10px var(--dark-shadow);
+}
+
+.concept-card {
+    background-color: var(--light-card);
+    border: 1px solid var(--light-border);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dark-theme .concept-card {
+    background-color: var(--dark-card);
+    border: 1px solid var(--dark-border);
+}
+
+.concept-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px var(--light-shadow);
+}
+
+.dark-theme .concept-card:hover {
+    box-shadow: 0 10px 20px var(--dark-shadow);
+}
+
+.category-badge {
+    background-color: var(--light-accent-secondary);
+    color: white;
+}
+
+.dark-theme .category-badge {
+    background-color: var(--dark-accent-secondary);
+}
+
+.relation-item {
+    background-color: var(--light-card);
+    border: 1px solid var(--light-border);
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: var(--border-radius);
+    transition: transform 0.3s ease;
+}
+
+.dark-theme .relation-item {
+    background-color: var(--dark-card);
+    border: 1px solid var(--dark-border);
+}
+
+.relation-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px var(--light-shadow);
+}
+
+.dark-theme .relation-item:hover {
+    box-shadow: 0 5px 15px var(--dark-shadow);
+}
+
+.progress {
+    height: 8px;
+    background-color: var(--light-border);
+}
+
+.dark-theme .progress {
+    background-color: var(--dark-border);
+}
+
+.progress-bar {
+    background-color: var(--light-accent);
+}
+
+.dark-theme .progress-bar {
+    background-color: var(--dark-accent);
+}
+
+.graph-container {
+    width: 100%;
+    height: 600px;
+    border: 1px solid var(--light-border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background-color: var(--light-card);
+}
+
+.dark-theme .graph-container {
+    border: 1px solid var(--dark-border);
+    background-color: var(--dark-card);
+}
+
+.alerts-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    width: 350px;
+}
+
+.alert {
+    margin-bottom: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* تنسيقات النوافذ المنبثقة */
+.modal-content {
+    background-color: var(--light-container);
+    border: none;
+    border-radius: var(--border-radius);
+}
+
+.dark-theme .modal-content {
+    background-color: var(--dark-container);
+    color: var(--dark-text);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--light-border);
+}
+
+.dark-theme .modal-header {
+    border-bottom: 1px solid var(--dark-border);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--light-border);
+}
+
+.dark-theme .modal-footer {
+    border-top: 1px solid var(--dark-border);
+}
+
+.form-control, .form-select {
+    background-color: var(--light-bg);
+    border: 1px solid var(--light-border);
+    color: var(--light-text);
+}
+
+.dark-theme .form-control, .dark-theme .form-select {
+    background-color: var(--dark-bg);
+    border: 1px solid var(--dark-border);
+    color: var(--dark-text);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--light-accent);
+    box-shadow: 0 0 0 0.25rem rgba(var(--light-accent-rgb), 0.25);
+}
+
+.dark-theme .form-control:focus, .dark-theme .form-select:focus {
+    border-color: var(--dark-accent);
+    box-shadow: 0 0 0 0.25rem rgba(var(--dark-accent-rgb), 0.25);
+}
+
+/* تنسيقات الأزرار */
+.btn-outline-primary {
+    color: var(--light-accent);
+    border-color: var(--light-accent);
+}
+
+.dark-theme .btn-outline-primary {
+    color: var(--dark-accent);
+    border-color: var(--dark-accent);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--light-accent);
+    color: white;
+}
+
+.dark-theme .btn-outline-primary:hover {
+    background-color: var(--dark-accent);
+}
+
+.btn-outline-danger {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* تنسيقات علامات التبويب */
+.nav-tabs {
+    border-bottom: 1px solid var(--light-border);
+}
+
+.dark-theme .nav-tabs {
+    border-bottom: 1px solid var(--dark-border);
+}
+
+.nav-tabs .nav-link {
+    color: var(--light-text-secondary);
+}
+
+.dark-theme .nav-tabs .nav-link {
+    color: var(--dark-text-secondary);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--light-accent);
+    border-color: var(--light-border) var(--light-border) var(--light-container);
+    background-color: var(--light-container);
+}
+
+.dark-theme .nav-tabs .nav-link.active {
+    color: var(--dark-accent);
+    border-color: var(--dark-border) var(--dark-border) var(--dark-container);
+    background-color: var(--dark-container);
 }
