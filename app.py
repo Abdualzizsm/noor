@@ -33,6 +33,11 @@ github_token = os.getenv("GITHUB_TOKEN")
 if not github_token:
     print("تحذير: لم يتم تعيين GITHUB_TOKEN في ملف .env")
 
+# إعداد مفتاح OpenAI API
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    print("تحذير: لم يتم تعيين OPENAI_API_KEY في ملف .env")
+
 # إعداد مفتاح Google Gemini API
 gemini_api_key = os.getenv("GEMINI_API_KEY", "AIzaSyBiQN8UfRfH8M-IWGd-Nt_xSPZkTwqMWvs")
 genai.configure(api_key=gemini_api_key)
@@ -368,7 +373,7 @@ def process_message(user_message, conversation_history):
         response = requests.post(
             endpoint,
             headers={
-                "Authorization": f"Bearer {github_token}",
+                "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
                 "Content-Type": "application/json"
             },
             json=payload
