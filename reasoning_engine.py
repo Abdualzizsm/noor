@@ -133,6 +133,8 @@ class ReasoningEngine:
     def __init__(self, knowledge_graph: KnowledgeGraph = None):
         self.knowledge_graph = knowledge_graph or KnowledgeGraph()
         self.inferences = []
+        self.batch_size = 50  # حجم الدفعة الافتراضي
+        self.processing_cache = {}  # ذاكرة مؤقتة لتخزين نتائج المعالجة
         
     def extract_concepts_from_text(self, text: str) -> List[str]:
         """استخراج المفاهيم من النص"""
@@ -310,6 +312,101 @@ class ReasoningEngine:
         formatted_output += f"\nالتقييم العام: درجة الثقة {result['confidence']:.2%}\n"
         
         return formatted_output
+    
+    def process_large_dataset(self, dataset: List[Dict[str, Any]], batch_size: int = None) -> List[Dict[str, Any]]:
+        """
+        معالجة مجموعة بيانات كبيرة على دفعات لتجنب مشاكل الذاكرة
+        
+        Args:
+            dataset: قائمة من البيانات المراد معالجتها
+            batch_size: حجم الدفعة (اختياري)
+            
+        Returns:
+            نتائج المعالجة
+        """
+        if batch_size is None:
+            batch_size = self.batch_size
+            
+        results = []
+        
+        # معالجة البيانات على دفعات
+        for i in range(0, len(dataset), batch_size):
+            batch = dataset[i:i+batch_size]
+            batch_results = self._process_batch(batch)
+            results.extend(batch_results)
+            
+        return results
+    
+    def _process_batch(self, batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        معالجة دفعة واحدة من البيانات
+        
+        Args:
+            batch: دفعة من البيانات
+            
+        Returns:
+            نتائج معالجة الدفعة
+        """
+        results = []
+        
+        for item in batch:
+            # التحقق من وجود النتيجة في الذاكرة المؤقتة
+            item_hash = hash(str(item))
+            if item_hash in self.processing_cache:
+                results.append(self.processing_cache[item_hash])
+                continue
+                
+            # معالجة العنصر
+            processed_item = self._process_item(item)
+            
+            # تخزين النتيجة في الذاكرة المؤقتة
+            self.processing_cache[item_hash] = processed_item
+            results.append(processed_item)
+            
+        return results
+    
+    def _process_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        معالجة عنصر واحد من البيانات
+        
+        Args:
+            item: عنصر البيانات
+            
+        Returns:
+            العنصر بعد المعالجة
+        """
+        # هذه الدالة يمكن تخصيصها حسب نوع البيانات
+        processed_item = item.copy()
+        
+        # إذا كان العنصر يحتوي على نص، نقوم بتحليله
+        if 'text' in item:
+            text = item['text']
+            # استخراج المفاهيم
+            concept_ids = self.extract_concepts_from_text(text)
+            processed_item['concept_ids'] = concept_ids
+            
+            # إذا وجدنا مفاهيم، نقوم بتوليد استنتاجات
+            if concept_ids:
+                reasoning_result = self.reason(text)
+                processed_item['reasoning_result'] = reasoning_result
+        
+        return processed_item
+    
+    def clear_cache(self):
+        """
+        مسح الذاكرة المؤقتة لتحرير الموارد
+        """
+        self.processing_cache.clear()
+        
+    def set_batch_size(self, size: int):
+        """
+        تعيين حجم الدفعة
+        
+        Args:
+            size: حجم الدفعة الجديد
+        """
+        if size > 0:
+            self.batch_size = size
 
 
 # إنشاء قاعدة معرفية أولية للاختبار

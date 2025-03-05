@@ -504,109 +504,224 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // تصدير قاعدة المعرفة
     function exportKnowledgeBase() {
-        fetch('/api/export')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('فشل في تصدير قاعدة المعرفة');
-                }
-                return response.json();
-            })
+        fetch('/api/export?format=json')
+            .then(response => response.json())
             .then(data => {
-                // تحويل البيانات إلى نص JSON
-                const jsonData = JSON.stringify(data, null, 2);
-                
-                // إنشاء رابط تنزيل
-                const blob = new Blob([jsonData], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `knowledge_base_${new Date().toISOString().slice(0, 10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                
-                // تنظيف
-                setTimeout(() => {
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                }, 0);
-                
-                showAlert('تم تصدير قاعدة المعرفة بنجاح', 'success');
+                if (data.success) {
+                    // إنشاء رابط تنزيل مؤقت
+                    const blob = new Blob([data.data], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `knowledge_base_${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // تنظيف
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 0);
+                    
+                    showAlert('تم تصدير قاعدة المعرفة بنجاح!', 'success');
+                } else {
+                    showAlert('فشل تصدير قاعدة المعرفة: ' + data.message, 'danger');
+                }
             })
             .catch(error => {
-                console.error('خطأ:', error);
-                showAlert(error.message, 'danger');
+                console.error('خطأ في تصدير قاعدة المعرفة:', error);
+                showAlert('حدث خطأ أثناء تصدير قاعدة المعرفة.', 'danger');
             });
     }
     
     // استيراد قاعدة المعرفة
-    function importKnowledgeBase(event) {
-        const fileInput = document.getElementById('import-file');
-        const file = fileInput.files[0];
+    function importKnowledgeBase() {
+        const importData = document.getElementById('import-data').value.trim();
         
-        if (!file) {
-            showAlert('يرجى اختيار ملف للاستيراد', 'warning');
+        if (!importData) {
+            showAlert('الرجاء إدخال بيانات JSON صالحة.', 'warning');
             return;
         }
         
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = JSON.parse(e.target.result);
-                
-                // إرسال البيانات إلى الخادم
-                fetch('/api/import', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
+        try {
+            // التحقق من صحة تنسيق JSON
+            JSON.parse(importData);
+            
+            // إرسال البيانات للاستيراد
+            fetch('/api/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    data: importData,
+                    format: 'json'
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('فشل في استيراد قاعدة المعرفة');
-                    }
-                    return response.json();
-                })
-                .then(result => {
-                    // تحديث البيانات المحلية
-                    concepts = result.concepts || [];
-                    relations = result.relations || [];
-                    categories = result.categories || [];
-                    
-                    // إعادة عرض البيانات
-                    renderConcepts();
-                    renderRelations();
-                    populateConceptSelects();
-                    populateCategoryLists();
-                    
-                    // تحديث الرسم البياني
-                    if (typeof updateGraph === 'function') {
-                        updateGraph();
-                    }
-                    
-                    // إعادة تعيين حقل الملف
-                    fileInput.value = '';
-                    
-                    // إغلاق النافذة
-                    const modal = document.getElementById('import-modal');
-                    const modalInstance = bootstrap.Modal.getInstance(modal);
-                    if (modalInstance) {
-                        modalInstance.hide();
-                    }
-                    
-                    showAlert('تم استيراد قاعدة المعرفة بنجاح', 'success');
-                })
-                .catch(error => {
-                    console.error('خطأ:', error);
-                    showAlert(error.message, 'danger');
-                });
-            } catch (error) {
-                console.error('خطأ في تحليل ملف JSON:', error);
-                showAlert('الملف المختار ليس بتنسيق JSON صالح', 'danger');
-            }
-        };
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('تم استيراد قاعدة المعرفة بنجاح!', 'success');
+                    // إعادة تحميل البيانات
+                    loadInitialData();
+                } else {
+                    showAlert('فشل استيراد قاعدة المعرفة: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('خطأ في استيراد قاعدة المعرفة:', error);
+                showAlert('حدث خطأ أثناء استيراد قاعدة المعرفة.', 'danger');
+            });
+        } catch (e) {
+            showAlert('بيانات JSON غير صالحة. الرجاء التحقق من التنسيق.', 'danger');
+        }
+    }
+    
+    // معالجة المفاهيم على دفعات
+    function batchProcessConcepts() {
+        const conceptsData = document.getElementById('batch-concepts-data').value.trim();
+        const batchSize = document.getElementById('batch-concepts-size').value;
         
-        reader.readAsText(file);
+        if (!conceptsData) {
+            showAlert('الرجاء إدخال بيانات المفاهيم.', 'warning');
+            return;
+        }
+        
+        try {
+            // التحقق من صحة تنسيق JSON
+            const concepts = JSON.parse(conceptsData);
+            
+            if (!Array.isArray(concepts)) {
+                showAlert('يجب أن تكون بيانات المفاهيم مصفوفة من الكائنات.', 'warning');
+                return;
+            }
+            
+            // إرسال البيانات للمعالجة
+            fetch('/api/batch/concepts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    concepts: concepts,
+                    batch_size: batchSize
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const stats = data.stats;
+                    showAlert(`تمت معالجة المفاهيم بنجاح! تمت إضافة ${stats.success_count} مفهوم، فشل ${stats.fail_count} مفهوم. يوجد ${stats.orphaned_concepts_count} مفهوم بدون علاقات.`, 'success');
+                    // إعادة تحميل البيانات
+                    loadInitialData();
+                } else {
+                    showAlert('فشلت معالجة المفاهيم.', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('خطأ في معالجة المفاهيم:', error);
+                showAlert('حدث خطأ أثناء معالجة المفاهيم.', 'danger');
+            });
+        } catch (e) {
+            showAlert('بيانات JSON غير صالحة. الرجاء التحقق من التنسيق.', 'danger');
+        }
+    }
+    
+    // معالجة العلاقات على دفعات
+    function batchProcessRelations() {
+        const relationsData = document.getElementById('batch-relations-data').value.trim();
+        const batchSize = document.getElementById('batch-relations-size').value;
+        
+        if (!relationsData) {
+            showAlert('الرجاء إدخال بيانات العلاقات.', 'warning');
+            return;
+        }
+        
+        try {
+            // التحقق من صحة تنسيق JSON
+            const relations = JSON.parse(relationsData);
+            
+            if (!Array.isArray(relations)) {
+                showAlert('يجب أن تكون بيانات العلاقات مصفوفة من الكائنات.', 'warning');
+                return;
+            }
+            
+            // إرسال البيانات للمعالجة
+            fetch('/api/batch/relations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    relations: relations,
+                    batch_size: batchSize
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const stats = data.stats;
+                    showAlert(`تمت معالجة العلاقات بنجاح! تمت إضافة ${stats.success_count} علاقة، فشل ${stats.fail_count} علاقة.`, 'success');
+                    // إعادة تحميل البيانات
+                    loadInitialData();
+                } else {
+                    showAlert('فشلت معالجة العلاقات.', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('خطأ في معالجة العلاقات:', error);
+                showAlert('حدث خطأ أثناء معالجة العلاقات.', 'danger');
+            });
+        } catch (e) {
+            showAlert('بيانات JSON غير صالحة. الرجاء التحقق من التنسيق.', 'danger');
+        }
+    }
+    
+    // تحسين قاعدة المعرفة
+    function optimizeKnowledgeBase() {
+        fetch('/api/optimize', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const stats = data.stats;
+                showAlert(`تم تحسين قاعدة المعرفة بنجاح! تمت إزالة ${stats.duplicate_concepts_removed} مفهوم مكرر و ${stats.invalid_relations_removed} علاقة غير صالحة. يوجد ${stats.orphaned_concepts_count} مفهوم بدون علاقات.`, 'success');
+                // إعادة تحميل البيانات
+                loadInitialData();
+            } else {
+                showAlert('فشل تحسين قاعدة المعرفة.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('خطأ في تحسين قاعدة المعرفة:', error);
+            showAlert('حدث خطأ أثناء تحسين قاعدة المعرفة.', 'danger');
+        });
+    }
+    
+    // مسح الذاكرة المؤقتة
+    function clearCache() {
+        fetch('/api/clear-cache', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('تم مسح الذاكرة المؤقتة بنجاح!', 'success');
+            } else {
+                showAlert('فشل مسح الذاكرة المؤقتة.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('خطأ في مسح الذاكرة المؤقتة:', error);
+            showAlert('حدث خطأ أثناء مسح الذاكرة المؤقتة.', 'danger');
+        });
     }
     
     // تحديث الرسم البياني
@@ -784,6 +899,30 @@ document.addEventListener('DOMContentLoaded', function() {
             graphTab.addEventListener('shown.bs.tab', function() {
                 updateGraph();
             });
+        }
+        
+        // معالجة المفاهيم على دفعات
+        const batchConceptsBtn = document.getElementById('batch-concepts-btn');
+        if (batchConceptsBtn) {
+            batchConceptsBtn.addEventListener('click', batchProcessConcepts);
+        }
+        
+        // معالجة العلاقات على دفعات
+        const batchRelationsBtn = document.getElementById('batch-relations-btn');
+        if (batchRelationsBtn) {
+            batchRelationsBtn.addEventListener('click', batchProcessRelations);
+        }
+        
+        // تحسين قاعدة المعرفة
+        const optimizeBtn = document.getElementById('optimize-btn');
+        if (optimizeBtn) {
+            optimizeBtn.addEventListener('click', optimizeKnowledgeBase);
+        }
+        
+        // مسح الذاكرة المؤقتة
+        const clearCacheBtn = document.getElementById('clear-cache-btn');
+        if (clearCacheBtn) {
+            clearCacheBtn.addEventListener('click', clearCache);
         }
     }
     
