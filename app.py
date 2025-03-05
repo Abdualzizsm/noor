@@ -369,11 +369,17 @@ def process_message(user_message, conversation_history):
         endpoint = "https://api.openai.com/v1/chat/completions"
         print(f"استخدام نقطة النهاية: {endpoint}")
         
+        # التحقق من وجود مفتاح OpenAI API
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        if not openai_api_key:
+            print("تحذير: لم يتم تعيين OPENAI_API_KEY، سيتم استخدام النموذج البديل")
+            raise Exception("مفتاح OpenAI API غير متوفر")
+        
         # إرسال الطلب إلى واجهة برمجة التطبيقات
         response = requests.post(
             endpoint,
             headers={
-                "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+                "Authorization": f"Bearer {openai_api_key}",
                 "Content-Type": "application/json"
             },
             json=payload
