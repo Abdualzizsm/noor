@@ -178,6 +178,68 @@ def import_knowledge_base():
     else:
         return jsonify({'success': False, 'message': 'فشل في استيراد قاعدة المعرفة'}), 400
 
+@app.route('/api/batch/concepts', methods=['POST'])
+def batch_process_concepts():
+    """معالجة مجموعة من المفاهيم على دفعات"""
+    data = request.json
+    concepts_data = data.get('concepts', [])
+    batch_size = data.get('batch_size', None)
+    
+    if batch_size:
+        knowledge_manager.set_batch_size(int(batch_size))
+    
+    success_count, fail_count = knowledge_manager.batch_process_concepts(concepts_data)
+    
+    return jsonify({
+        'success': True,
+        'stats': {
+            'success_count': success_count,
+            'fail_count': fail_count,
+            'total': success_count + fail_count
+        }
+    })
+
+@app.route('/api/batch/relations', methods=['POST'])
+def batch_process_relations():
+    """معالجة مجموعة من العلاقات على دفعات"""
+    data = request.json
+    relations_data = data.get('relations', [])
+    batch_size = data.get('batch_size', None)
+    
+    if batch_size:
+        knowledge_manager.set_batch_size(int(batch_size))
+    
+    success_count, fail_count = knowledge_manager.batch_process_relations(relations_data)
+    
+    return jsonify({
+        'success': True,
+        'stats': {
+            'success_count': success_count,
+            'fail_count': fail_count,
+            'total': success_count + fail_count
+        }
+    })
+
+@app.route('/api/optimize', methods=['POST'])
+def optimize_knowledge_base():
+    """تحسين وتنظيف قاعدة المعرفة"""
+    stats = knowledge_manager.optimize_knowledge_base()
+    
+    return jsonify({
+        'success': True,
+        'stats': stats
+    })
+
+@app.route('/api/clear-cache', methods=['POST'])
+def clear_knowledge_cache():
+    """مسح الذاكرة المؤقتة لمدير المعرفة"""
+    knowledge_manager.clear_caches()
+    
+    return jsonify({
+        'success': True,
+        'message': 'تم مسح الذاكرة المؤقتة بنجاح'
+    })
+
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
@@ -201,7 +263,7 @@ def chat():
             final_response = analyze_and_respond(user_message, raw_info, conversation_history)
             
             # إضافة رد النموذج إلى سجل المحادثة
-            conversation_history.append({"role": "assistant", "content": final_response})
+            conversation_history.append({"role": "assistant", "content": final_response["response"]})
             
             # الحفاظ على سجل محادثة محدود (آخر 10 رسائل فقط)
             if len(conversation_history) > 20:
@@ -209,7 +271,8 @@ def chat():
             
             return jsonify({
                 'raw_info': raw_info,
-                'response': final_response
+                'response': final_response["response"],
+                'thinking_process': final_response["thinking_process"]
             })
         else:
             response_data = process_message(user_message, conversation_history)
@@ -230,11 +293,18 @@ def chat():
 def process_message(user_message, conversation_history):
     # التحقق إذا كان السؤال عن هوية الروبوت
     if any(phrase in user_message.lower() for phrase in ['من أنت', 'من انت', 'عرف نفسك', 'عرفنا عليك', 'من هو', 'من هي']):
-        return "أنا ذكاء نور الخارق، كيف يمكنني مساعدتك اليوم؟"
+        return {
+            "response": "أنا ذكاء نور الخارق، كيف يمكنني مساعدتك اليوم؟",
+            "thinking_process": "تحليل السؤال: سؤال عن الهوية\nالاستجابة: تقديم معلومات عن هوية نور"
+        }
     
     # التحقق من طلبات التاريخ والوقت
     if any(keyword in user_message.lower() for keyword in ['تاريخ', 'اليوم', 'التاريخ', 'الوقت', 'الساعة']):
-        return handle_date_time_query(user_message, conversation_history)
+        response = handle_date_time_query(user_message, conversation_history)
+        return {
+            "response": response,
+            "thinking_process": "تحليل السؤال: استفسار عن التاريخ أو الوقت\nالاستجابة: تقديم معلومات عن التاريخ والوقت"
+        }
     
     try:
         # تحليل السؤال وتخطيط الحل باستخدام محرك التفكير
@@ -312,15 +382,16 @@ def process_message(user_message, conversation_history):
         response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
         
         if not response_text:
-            return "لم يتم الحصول على رد من النموذج"
+            return {
+                "response": "لم يتم الحصول على رد من النموذج",
+                "thinking_process": "حدث خطأ في الاتصال بالنموذج"
+            }
         
         # إعداد الاستجابة
-        response_data = {
+        return {
             "response": response_text,
             "thinking_process": combined_thinking
         }
-        
-        return response_data
         
     except requests.exceptions.RequestException as e:
         # إذا فشلت واجهة برمجة تطبيقات OpenAI، نجرب واجهة برمجة تطبيقات GitHub AI
@@ -383,9 +454,22 @@ def process_message(user_message, conversation_history):
         ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
         
         if not ai_response:
-            return "لم يتم الحصول على رد من النموذج"
+            return {
+                "response": "لم يتم الحصول على رد من النموذج",
+                "thinking_process": "حدث خطأ في الاتصال بالنموذج"
+            }
         
-        return ai_response
+        # إنشاء عملية تفكير بديلة
+        fallback_thinking = "عملية التفكير (النموذج البديل):\n"
+        fallback_thinking += f"1. تم استلام الرسالة: '{user_message}'\n"
+        fallback_thinking += "2. حدث خطأ في الاتصال بالنموذج الأساسي\n"
+        fallback_thinking += "3. تم استخدام النموذج البديل (GitHub AI) للإجابة\n"
+        fallback_thinking += "4. تم تحليل الرسالة وإنشاء استجابة مناسبة\n"
+        
+        return {
+            "response": ai_response,
+            "thinking_process": fallback_thinking
+        }
 
 def use_gemini_with_web_search(user_message):
     """استخدام Google Gemini مع البحث على الإنترنت"""
@@ -425,13 +509,64 @@ def use_gemini_with_web_search(user_message):
             # تنسيق الوقت
             formatted_time = now.strftime("%I:%M %p").replace("AM", "صباحاً").replace("PM", "مساءً")
             
+            # تحويل التاريخ الميلادي إلى هجري
+            hijri_date = Gregorian(now.year, now.month, now.day).to_hijri()
+            
+            # أسماء الأشهر الهجرية
+            hijri_months = {
+                1: "محرم", 2: "صفر", 3: "ربيع الأول", 4: "ربيع الثاني", 
+                5: "جمادى الأولى", 6: "جمادى الآخرة", 7: "رجب", 8: "شعبان",
+                9: "رمضان", 10: "شوال", 11: "ذو القعدة", 12: "ذو الحجة"
+            }
+            
+            # تنسيق التاريخ الهجري
+            formatted_hijri_date = f"{hijri_date.day} {hijri_months[hijri_date.month]} {hijri_date.year}"
+            
+            # التحقق من طلب التاريخ الهجري
+            is_hijri_request = False
+            
+            # فحص الرسالة الحالية
+            if any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
+                is_hijri_request = True
+            
+            # فحص سياق المحادثة السابقة إذا كانت الرسالة الحالية قصيرة
+            if len(user_message.split()) <= 2 and not is_hijri_request:
+                # البحث في آخر رسالتين من المحادثة
+                for i in range(min(4, len(conversation_history))):
+                    if i > 0 and conversation_history[-i]["role"] == "user":
+                        prev_msg = conversation_history[-i]["content"].lower()
+                        if any(keyword in prev_msg for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
+                            if any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
+                                is_hijri_request = True
+                                break
+            
             # إعداد الاستجابة بناءً على نوع السؤال
-            if any(keyword in user_message for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
-                return f"اليوم هو {weekday}، {formatted_date}."
+            if is_hijri_request:
+                return {
+                    "response": f"التاريخ الهجري اليوم هو {formatted_hijri_date}.",
+                    "thinking_process": "تحليل استعلام متعلق بالتاريخ والوقت:\n"
+                }
+            elif any(keyword in user_message for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
+                if any(keyword in user_message for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
+                    return {
+                        "response": f"التاريخ الهجري اليوم هو {formatted_hijri_date}.",
+                        "thinking_process": "تحليل استعلام متعلق بالتاريخ والوقت:\n"
+                    }
+                else:
+                    return {
+                        "response": f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}.",
+                        "thinking_process": "تحليل استعلام متعلق بالتاريخ والوقت:\n"
+                    }
             elif any(keyword in user_message for keyword in ['الوقت', 'الساعة']):
-                return f"الوقت الآن هو {formatted_time}."
+                return {
+                    "response": f"الوقت الآن هو {formatted_time}.",
+                    "thinking_process": "تحليل استعلام متعلق بالتاريخ والوقت:\n"
+                }
             else:
-                return f"اليوم هو {weekday}، {formatted_date}، والوقت الآن هو {formatted_time}."
+                return {
+                    "response": f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}، والوقت الآن هو {formatted_time}.",
+                    "thinking_process": "تحليل استعلام متعلق بالتاريخ والوقت:\n"
+                }
         
         # إنشاء نموذج Gemini مع تمكين البحث على الإنترنت
         generation_config = {
@@ -480,20 +615,36 @@ def use_gemini_with_web_search(user_message):
         ملاحظة: هذه المعلومات الخام ستستخدم لاحقاً لتحليلها وإعادة صياغتها.
         """
         
+        thinking_process = "عملية البحث والتحليل:\n"
+        thinking_process += f"1. تم استلام الاستعلام: '{user_message}'\n"
+        thinking_process += "2. تم تحديد أن الاستعلام يتطلب بحثًا على الإنترنت\n"
+        thinking_process += "3. جاري البحث عن معلومات دقيقة ومحدثة...\n"
+        
         response = model.generate_content(prompt)
         
         # التحقق من وجود محتوى في الاستجابة
         if not response.text:
-            return "لم يتم العثور على معلومات. يرجى إعادة صياغة طلبك."
+            return {
+                "response": "لم يتم العثور على معلومات. يرجى إعادة صياغة طلبك.",
+                "thinking_process": thinking_process + "4. لم يتم العثور على معلومات كافية. فشل البحث."
+            }
         
         # تنظيف وتنسيق النص
         raw_info = response.text.strip()
+        thinking_process += "4. تم العثور على معلومات ذات صلة\n"
+        thinking_process += "5. تنظيم وتنسيق المعلومات للعرض\n"
         
-        return raw_info
+        return {
+            "response": raw_info,
+            "thinking_process": thinking_process
+        }
         
     except Exception as e:
         print(f"خطأ في استخدام Gemini مع البحث على الإنترنت: {str(e)}")
-        return f"حدث خطأ أثناء البحث: {str(e)}"
+        return {
+            "response": f"حدث خطأ أثناء البحث: {str(e)}",
+            "thinking_process": f"حدث خطأ أثناء معالجة الاستعلام: {str(e)}"
+        }
 
 def analyze_and_respond(user_question, raw_info, conversation_history):
     """تحليل المعلومات الخام وإعادة صياغتها بشكل ذكي"""
@@ -523,38 +674,44 @@ def analyze_and_respond(user_question, raw_info, conversation_history):
         المطلوب:
         1. قم بتحليل المعلومات وتلخيصها بشكل ذكي.
         2. قدم إجابة مباشرة ومفيدة على سؤال المستخدم.
-        3. استخدم لغة واضحة وسهلة الفهم.
-        4. نظم المعلومات بشكل منطقي.
-        5. تجنب تكرار المعلومات.
-        6. تأكد من أن الإجابة شاملة وتغطي جميع جوانب السؤال.
-        7. حافظ على سياق المحادثة واربط إجابتك بالمحادثة السابقة إذا كان ذلك مناسبًا.
+        3. تأكد من أن الإجابة شاملة وتغطي جميع جوانب السؤال.
+        4. استخدم أسلوباً واضحاً وسهل الفهم.
+        5. قدم الإجابة باللغة العربية الفصحى.
         
-        ملاحظة: قدم إجابة شاملة ولكن مختصرة، مع التركيز على النقاط الأكثر أهمية.
-        
-        سياق المحادثة السابقة:
+        ملاحظة: يجب أن تكون الإجابة دقيقة وموثوقة ومستندة إلى المعلومات المقدمة.
         """
         
-        # إضافة آخر 5 رسائل من سجل المحادثة إلى الطلب (إذا وجدت)
-        if len(conversation_history) > 1:  # تجاهل الرسالة الحالية
-            prompt += "\nفيما يلي سجل المحادثة السابقة (أحدث 5 رسائل):\n"
-            for i, message in enumerate(conversation_history[-6:-1]):  # آخر 5 رسائل باستثناء الرسالة الحالية
-                role = "المستخدم" if message["role"] == "user" else "نور"
-                prompt += f"{i+1}. {role}: {message['content']}\n"
+        thinking_process = "عملية تحليل المعلومات والإجابة:\n"
+        thinking_process += f"1. تحليل سؤال المستخدم: '{user_question}'\n"
+        thinking_process += "2. مراجعة المعلومات الخام المتوفرة\n"
+        thinking_process += "3. استخراج المعلومات ذات الصلة بالسؤال\n"
+        thinking_process += "4. تنظيم المعلومات وتلخيصها\n"
+        thinking_process += "5. صياغة إجابة شاملة ومباشرة\n"
         
         response = model.generate_content(prompt)
         
         # التحقق من وجود محتوى في الاستجابة
         if not response.text:
-            return "عذراً، لم أتمكن من تحليل المعلومات. يرجى إعادة صياغة سؤالك."
+            return {
+                "response": "لم أتمكن من تحليل المعلومات بشكل صحيح. يرجى إعادة صياغة سؤالك.",
+                "thinking_process": thinking_process + "6. فشل في تحليل المعلومات وتقديم إجابة مناسبة."
+            }
         
         # تنظيف وتنسيق النص
-        final_response = response.text.strip()
+        answer = response.text.strip()
+        thinking_process += "6. تم تقديم إجابة مناسبة بناءً على المعلومات المتاحة\n"
         
-        return final_response
+        return {
+            "response": answer,
+            "thinking_process": thinking_process
+        }
         
     except Exception as e:
         print(f"خطأ في تحليل المعلومات: {str(e)}")
-        return f"حدث خطأ أثناء تحليل المعلومات: {str(e)}"
+        return {
+            "response": f"حدث خطأ أثناء تحليل المعلومات: {str(e)}",
+            "thinking_process": f"حدث خطأ أثناء تحليل المعلومات: {str(e)}"
+        }
 
 def handle_date_time_query(user_message, conversation_history):
     """معالجة استفسارات التاريخ والوقت مع دعم التاريخ الهجري"""
@@ -564,10 +721,9 @@ def handle_date_time_query(user_message, conversation_history):
         from hijri_converter import Gregorian, Hijri
         
         # الحصول على التاريخ والوقت الحاليين
-        timezone = pytz.timezone('Asia/Riyadh')  # استخدام توقيت السعودية كمثال
-        now = datetime.now(timezone)
+        now = datetime.now()
         
-        # تحديد الأشهر العربية
+        # تنسيق التاريخ والوقت بالعربية
         arabic_months = {
             1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل", 5: "مايو", 6: "يونيو",
             7: "يوليو", 8: "أغسطس", 9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر"
@@ -598,40 +754,44 @@ def handle_date_time_query(user_message, conversation_history):
         # تنسيق التاريخ الهجري
         formatted_hijri_date = f"{hijri_date.day} {hijri_months[hijri_date.month]} {hijri_date.year}"
         
+        # إعداد عملية التفكير
+        thinking_process = "تحليل استعلام متعلق بالتاريخ والوقت:\n"
+        thinking_process += "1. تم التعرف على استعلام متعلق بالتاريخ/الوقت\n"
+        thinking_process += f"2. التاريخ الميلادي الحالي: {formatted_date}\n"
+        thinking_process += f"3. اليوم الحالي: {weekday}\n"
+        thinking_process += f"4. التاريخ الهجري الحالي: {formatted_hijri_date}\n"
+        thinking_process += f"5. الوقت الحالي: {formatted_time}\n"
+        
         # التحقق من طلب التاريخ الهجري
-        is_hijri_request = False
-        
-        # فحص الرسالة الحالية
-        if any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
-            is_hijri_request = True
-        
-        # فحص سياق المحادثة السابقة إذا كانت الرسالة الحالية قصيرة
-        if len(user_message.split()) <= 2 and not is_hijri_request:
-            # البحث في آخر رسالتين من المحادثة
-            for i in range(min(4, len(conversation_history))):
-                if i > 0 and conversation_history[-i]["role"] == "user":
-                    prev_msg = conversation_history[-i]["content"].lower()
-                    if any(keyword in prev_msg for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
-                        if any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
-                            is_hijri_request = True
-                            break
+        is_hijri_request = any(keyword in user_message.lower() for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي'])
         
         # إعداد الاستجابة بناءً على نوع السؤال
+        response_text = ""
+        
         if is_hijri_request:
-            return f"التاريخ الهجري اليوم هو {formatted_hijri_date}."
+            response_text = f"التاريخ الهجري اليوم هو {formatted_hijri_date}."
+            thinking_process += "6. تم تحديد أن الاستعلام متعلق بالتاريخ الهجري\n"
         elif any(keyword in user_message for keyword in ['تاريخ', 'اليوم', 'التاريخ']):
-            if any(keyword in user_message for keyword in ['هجري', 'بالهجري', 'الهجري', 'إسلامي']):
-                return f"التاريخ الهجري اليوم هو {formatted_hijri_date}."
-            else:
-                return f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}."
+            response_text = f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}."
+            thinking_process += "6. تم تحديد أن الاستعلام متعلق بالتاريخ\n"
         elif any(keyword in user_message for keyword in ['الوقت', 'الساعة']):
-            return f"الوقت الآن هو {formatted_time}."
+            response_text = f"الوقت الآن هو {formatted_time}."
+            thinking_process += "6. تم تحديد أن الاستعلام متعلق بالوقت/الساعة\n"
         else:
-            return f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}، والوقت الآن هو {formatted_time}."
-    
+            response_text = f"اليوم هو {weekday}، {formatted_date}، والتاريخ الهجري الموافق هو {formatted_hijri_date}، والوقت الآن هو {formatted_time}."
+            thinking_process += "6. تم تحديد أن الاستعلام متعلق بكل من التاريخ والوقت\n"
+        
+        return {
+            "response": response_text,
+            "thinking_process": thinking_process
+        }
+        
     except Exception as e:
-        print(f"خطأ في معالجة استفسار التاريخ والوقت: {str(e)}")
-        return "عذراً، حدث خطأ أثناء معالجة استفسار التاريخ والوقت."
+        print(f"خطأ في معالجة استعلام التاريخ والوقت: {str(e)}")
+        return {
+            "response": "عذراً، حدث خطأ أثناء معالجة استعلام التاريخ والوقت.",
+            "thinking_process": f"حدث خطأ أثناء معالجة استعلام التاريخ والوقت: {str(e)}"
+        }
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='تشغيل تطبيق نور')
