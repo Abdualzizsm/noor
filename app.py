@@ -306,10 +306,7 @@ def process_message(user_message, conversation_history):
     # التحقق من طلبات التاريخ والوقت
     if any(keyword in user_message.lower() for keyword in ['تاريخ', 'اليوم', 'التاريخ', 'الوقت', 'الساعة']):
         response = handle_date_time_query(user_message, conversation_history)
-        return {
-            "response": response,
-            "thinking_process": "تحليل السؤال: استفسار عن التاريخ أو الوقت\nالاستجابة: تقديم معلومات عن التاريخ والوقت"
-        }
+        return response
     
     try:
         # تحليل السؤال وتخطيط الحل باستخدام محرك التفكير
@@ -336,7 +333,7 @@ def process_message(user_message, conversation_history):
         # دمج نتائج التفكير المنطقي والاستنتاجي
         combined_thinking = f"{thinking_process}\n\n{reasoning_output}"
         
-        # إعداد الطلب إلى واجهة برمجة تطبيقات OpenAI مع إضافة نتائج التفكير
+        # إعداد الطلب إلى واجهة برمجة تطبيقات GitHub AI
         messages = [
             {
                 "role": "system",
@@ -359,84 +356,17 @@ def process_message(user_message, conversation_history):
         
         # إعداد بيانات الطلب
         payload = {
-            "model": "gpt-3.5-turbo",
+            "model": "gpt-4o-mini",
             "messages": messages,
             "temperature": 0.7,
             "max_tokens": 1000
         }
-        
-        # نقطة النهاية المستخدمة
-        endpoint = "https://api.openai.com/v1/chat/completions"
-        print(f"استخدام نقطة النهاية: {endpoint}")
-        
-        # التحقق من وجود مفتاح OpenAI API
-        openai_api_key = os.getenv('OPENAI_API_KEY')
-        if not openai_api_key:
-            print("تحذير: لم يتم تعيين OPENAI_API_KEY، سيتم استخدام النموذج البديل")
-            raise Exception("مفتاح OpenAI API غير متوفر")
-        
-        # إرسال الطلب إلى واجهة برمجة التطبيقات
-        response = requests.post(
-            endpoint,
-            headers={
-                "Authorization": f"Bearer {openai_api_key}",
-                "Content-Type": "application/json"
-            },
-            json=payload
-        )
-        
-        # التحقق من نجاح الطلب
-        response.raise_for_status()
-        
-        # استخراج الرد من النموذج
-        response_data = response.json()
-        response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        
-        if not response_text:
-            return {
-                "response": "لم يتم الحصول على رد من النموذج",
-                "thinking_process": "حدث خطأ في الاتصال بالنموذج"
-            }
-        
-        # إعداد الاستجابة
-        return {
-            "response": response_text,
-            "thinking_process": combined_thinking
-        }
-        
-    except requests.exceptions.RequestException as e:
-        # إذا فشلت واجهة برمجة تطبيقات OpenAI، نجرب واجهة برمجة تطبيقات GitHub AI
-        print(f"فشل طلب OpenAI: {str(e)}. جاري تجربة GitHub AI...")
         
         # إعداد الطلب إلى واجهة برمجة تطبيقات GitHub AI
         headers = {
             "Authorization": f"Bearer {github_token}",
             "Content-Type": "application/json",
             "Accept": "application/json"
-        }
-        
-        # إعداد رسائل المحادثة مع سياق المحادثة
-        messages = [
-            {
-                "role": "system",
-                "content": "أنت ذكاء نور الخارق. ساعد المستخدم بإجابات مختصرة ومفيدة. لا تذكر أبدًا أنك من OpenAI أو أي شركة أخرى. تذكر المحادثة السابقة وحافظ على سياق المحادثة."
-            }
-        ]
-        
-        # إضافة آخر 10 رسائل من سجل المحادثة (أو أقل إذا كان السجل أقصر)
-        for message in conversation_history[-10:]:
-            messages.append({
-                "role": message["role"],
-                "content": message["content"]
-            })
-        
-        # إعداد بيانات الطلب
-        payload = {
-            "model": "gpt-4o-mini",
-            "messages": messages,
-            "temperature": 1,
-            "max_tokens": 2048,
-            "top_p": 1
         }
         
         # نقطة النهاية المستخدمة
@@ -462,25 +392,104 @@ def process_message(user_message, conversation_history):
         
         # استخراج الرد من النموذج
         response_data = response.json()
-        ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
         
-        if not ai_response:
+        if not response_text:
             return {
                 "response": "لم يتم الحصول على رد من النموذج",
                 "thinking_process": "حدث خطأ في الاتصال بالنموذج"
             }
         
-        # إنشاء عملية تفكير بديلة
-        fallback_thinking = "عملية التفكير (النموذج البديل):\n"
-        fallback_thinking += f"1. تم استلام الرسالة: '{user_message}'\n"
-        fallback_thinking += "2. حدث خطأ في الاتصال بالنموذج الأساسي\n"
-        fallback_thinking += "3. تم استخدام النموذج البديل (GitHub AI) للإجابة\n"
-        fallback_thinking += "4. تم تحليل الرسالة وإنشاء استجابة مناسبة\n"
-        
+        # إعداد الاستجابة
         return {
-            "response": ai_response,
-            "thinking_process": fallback_thinking
+            "response": response_text,
+            "thinking_process": combined_thinking
         }
+        
+    except requests.exceptions.RequestException as e:
+        print(f"فشل طلب GitHub AI: {str(e)}. جاري المحاولة مرة أخرى...")
+        
+        try:
+            # محاولة استخدام نقطة نهاية بديلة
+            endpoint = endpoints[1]  # استخدام النقطة البديلة الأولى
+            print(f"استخدام نقطة النهاية البديلة: {endpoint}")
+            
+            # إرسال الطلب مرة أخرى
+            response = requests.post(
+                endpoint,
+                headers=headers,
+                json=payload
+            )
+            
+            # التحقق من نجاح الطلب
+            response.raise_for_status()
+            
+            # استخراج الرد من النموذج
+            response_data = response.json()
+            ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            
+            if not ai_response:
+                return {
+                    "response": "لم يتم الحصول على رد من النموذج",
+                    "thinking_process": "حدث خطأ في الاتصال بالنموذج"
+                }
+            
+            # إنشاء عملية تفكير بديلة
+            fallback_thinking = "عملية التفكير:\n"
+            fallback_thinking += f"1. تم استلام الرسالة: '{user_message}'\n"
+            fallback_thinking += "2. تم تحليل الرسالة باستخدام محرك التفكير\n"
+            fallback_thinking += "3. تم إنشاء استجابة مناسبة\n"
+            
+            return {
+                "response": ai_response,
+                "thinking_process": combined_thinking
+            }
+            
+        except requests.exceptions.RequestException as e2:
+            print(f"فشل طلب GitHub AI البديل: {str(e2)}. جاري استخدام النقطة الثالثة...")
+            
+            try:
+                # محاولة استخدام نقطة نهاية بديلة ثانية
+                endpoint = endpoints[2]  # استخدام النقطة البديلة الثانية
+                print(f"استخدام نقطة النهاية البديلة الثانية: {endpoint}")
+                
+                # إرسال الطلب مرة أخرى
+                response = requests.post(
+                    endpoint,
+                    headers=headers,
+                    json=payload
+                )
+                
+                # التحقق من نجاح الطلب
+                response.raise_for_status()
+                
+                # استخراج الرد من النموذج
+                response_data = response.json()
+                ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                
+                if not ai_response:
+                    return {
+                        "response": "لم يتم الحصول على رد من النموذج",
+                        "thinking_process": "حدث خطأ في الاتصال بالنموذج"
+                    }
+                
+                # إنشاء عملية تفكير بديلة
+                fallback_thinking = "عملية التفكير:\n"
+                fallback_thinking += f"1. تم استلام الرسالة: '{user_message}'\n"
+                fallback_thinking += "2. تم تحليل الرسالة باستخدام محرك التفكير\n"
+                fallback_thinking += "3. تم إنشاء استجابة مناسبة\n"
+                
+                return {
+                    "response": ai_response,
+                    "thinking_process": combined_thinking
+                }
+                
+            except Exception as e3:
+                print(f"فشلت جميع محاولات الاتصال: {str(e3)}")
+                return {
+                    "response": "عذراً، حدث خطأ في الاتصال بالنموذج. يرجى المحاولة مرة أخرى لاحقاً.",
+                    "thinking_process": "حدث خطأ في الاتصال بجميع نقاط النهاية المتاحة."
+                }
 
 def use_gemini_with_web_search(user_message):
     """استخدام Google Gemini مع البحث على الإنترنت"""
