@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let isWebSearchEnabled = false;
     let isThemeDark = true; // افتراضي: الوضع الداكن
-    let typingSpeed = 15; // سرعة الكتابة (مللي ثانية لكل حرف)
+    let typingSpeed = 5; // سرعة الكتابة (مللي ثانية لكل حرف) - تم تسريعها
     
     // إضافة مؤشر التفكير إلى الصفحة
     const liveSearchIndicator = document.createElement('div');
@@ -346,8 +346,8 @@ document.addEventListener('DOMContentLoaded', function() {
         tempDiv.innerHTML = html;
         const text = tempDiv.textContent;
         
-        // إذا كان النص فارغًا، قم بإضافة HTML مباشرة
-        if (!text || text.trim() === '') {
+        // إذا كان النص فارغًا أو طويلًا جدًا، قم بإضافة HTML مباشرة
+        if (!text || text.trim() === '' || text.length > 500) {
             element.innerHTML = html;
             if (callback) callback();
             return;
@@ -360,10 +360,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // زيادة عدد الأحرف المضافة في كل خطوة للنصوص الطويلة
+        const charsPerStep = text.length > 200 ? 5 : 1;
+        
         if (index < text.length) {
-            element.textContent += text.charAt(index);
+            // إضافة عدة أحرف في كل خطوة
+            const nextIndex = Math.min(index + charsPerStep, text.length);
+            element.textContent += text.substring(index, nextIndex);
+            
             setTimeout(() => {
-                typeText(element, html, index + 1, callback);
+                typeText(element, html, nextIndex, callback);
             }, typingSpeed);
         } else {
             // بعد الانتهاء من الكتابة، استبدل النص بـ HTML المنسق
