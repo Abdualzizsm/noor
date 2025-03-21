@@ -371,9 +371,9 @@ def process_message(user_message, conversation_history):
         
         # نقطة النهاية المستخدمة
         endpoints = [
-            "https://models.github.ai/inference/chat/completions",  # الأصلية
+            "https://api.github.com/copilot/chat/completions",  # الأصلية المعدلة
             "https://api.github.com/models/chat/completions",  # تجربة 1
-            "https://api.github.com/models/gpt-4o-mini/chat/completions"  # تجربة 2
+            "https://api.github.com/graphql"  # تجربة 2 - واجهة GraphQL
         ]
         
         # استخدام النقطة الأصلية

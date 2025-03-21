@@ -5,6 +5,6 @@ requests==2.31.0
 azure-ai-inference==1.0.0b1
 google-generativeai==0.3.1
 hijri-converter==2.3.1
-pytz==2025.1
+pytz==2023.3
 networkx==3.1
-numpy==1.24.3
+# numpy==1.24.3 - تم تعليقها بسبب مشاكل التثبيت
